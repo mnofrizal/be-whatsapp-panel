@@ -1,0 +1,276 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite" // Start with SQLite, easy migration to "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Subscription model - represents organization/company  
+model Subscription {
+  id           String           @id @default(cuid())
+  name         String // Company/organization name
+  tier         SubscriptionTier @default(BASIC)
+  maxInstances Int              @default(5)
+  isActive     Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  // Usage tracking
+  currentInstances Int       @default(0)
+  monthlyMessages  Int       @default(0)
+  lastUsageReset   DateTime?
+
+  // Relations
+  users        User[]
+  instances    Instance[]
+  usageRecords UsageRecord[]
+
+  @@map("subscriptions")
+}
+
+// User model - users within a subscription
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  password       String // bcrypt hashed
+  name           String // User display name
+  role           UserRole  @default(USER)
+  subscriptionId String
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  lastLoginAt    DateTime?
+
+  // Relations
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  instances    Instance[]
+
+  @@map("users")
+}
+
+// Instance model - WhatsApp instances
+model Instance {
+  id                 String         @id @default(cuid())
+  name               String // Instance name (unique per subscription)
+  subscriptionId     String
+  createdById        String
+  status             InstanceStatus @default(DISCONNECTED)
+  phone              String? // WhatsApp phone number
+  displayName        String? // WhatsApp display name
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  lastConnectedAt    DateTime?
+  lastDisconnectedAt DateTime?
+
+  // Instance configuration
+  settings Json? // Instance-specific settings
+  isActive Boolean @default(true)
+
+  // Connection info
+  qrCode             String? // Current QR code
+  qrCodeExpiry       DateTime?
+  connectionAttempts Int       @default(0)
+  lastError          String?
+  lastErrorAt        DateTime?
+
+  // Relations
+  subscription  Subscription   @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  createdBy     User           @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  apiKeys       ApiKey[]
+  messageStats  MessageStat[]
+  contacts      Contact[]
+  webhookConfig WebhookConfig?
+  sessionData   SessionData?
+  usageRecords  UsageRecord[]
+
+  @@unique([subscriptionId, name]) // Instance name unique per subscription
+  @@map("instances")
+}
+
+// API Key model - per-instance API keys
+model ApiKey {
+  id          String    @id @default(cuid())
+  instanceId  String
+  name        String // Human-readable name for the key
+  keyHash     String    @unique // SHA-256 hash of the actual key
+  permissions Json // Array of permissions
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+
+  // Usage tracking
+  usageCount Int @default(0)
+  rateLimit  Int @default(1000) // Requests per hour
+
+  // Relations
+  instance Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  @@map("api_keys")
+}
+
+// Message statistics for API monitoring
+model MessageStat {
+  id               String @id @default(cuid())
+  instanceId       String
+  date             String // "2024-01-01" format
+  messagesSent     Int    @default(0)
+  messagesReceived Int    @default(0)
+  messagesFailed   Int    @default(0)
+  apiCalls         Int    @default(0)
+
+  // Relations
+  instance Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  @@unique([instanceId, date])
+  @@index([instanceId, date])
+  @@map("message_stats")
+}
+
+// Contact model - WhatsApp contacts
+model Contact {
+  id            String    @id @default(cuid())
+  instanceId    String
+  jid           String // WhatsApp JID
+  name          String? // Contact name
+  notify        String? // WhatsApp notify name
+  isBlocked     Boolean   @default(false)
+  isGroup       Boolean   @default(false)
+  groupAdmin    Boolean? // If it's a group, is user admin
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastMessageAt DateTime?
+
+  // Contact metadata
+  profilePictureUrl String?
+  status            String? // WhatsApp status
+
+  // Relations
+  instance Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  @@unique([instanceId, jid]) // JID unique per instance
+  @@map("contacts")
+}
+
+// Webhook configuration
+model WebhookConfig {
+  id         String   @id @default(cuid())
+  instanceId String   @unique
+  url        String // Webhook URL
+  events     Json // Array of events to send
+  secret     String? // Secret for signature validation
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Webhook stats
+  totalSent    Int       @default(0)
+  totalFailed  Int       @default(0)
+  lastSentAt   DateTime?
+  lastFailedAt DateTime?
+  lastError    String?
+
+  // Relations
+  instance Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  @@map("webhook_configs")
+}
+
+// Session data for Baileys
+model SessionData {
+  id         String   @id @default(cuid())
+  instanceId String   @unique
+  authState  String // JSON string of Baileys auth state
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Session metadata
+  sessionValid Boolean   @default(true)
+  lastBackup   DateTime?
+
+  // Relations
+  instance Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  @@map("session_data")
+}
+
+// Usage tracking for billing/analytics
+model UsageRecord {
+  id             String    @id @default(cuid())
+  subscriptionId String
+  instanceId     String? // null for subscription-level usage
+  recordType     UsageType
+  count          Int       @default(0)
+  period         String // e.g., "2024-01" for monthly
+  recordDate     DateTime  @default(now())
+
+  // Additional data
+  metadata Json? // Extra usage data
+
+  // Relations
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  instance     Instance?    @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriptionId, instanceId, recordType, period])
+  @@map("usage_records")
+}
+
+// Audit log for security and compliance
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String // Action performed (CREATE_INSTANCE, DELETE_INSTANCE, LOGIN, etc.)
+  resource   String // Resource affected (instance, user, etc.)
+  resourceId String? // ID of the affected resource
+  userId     String? // User who performed the action
+  ipAddress  String?
+  timestamp  DateTime @default(now())
+
+  @@index([userId, timestamp])
+  @@index([resource, resourceId])
+  @@map("audit_logs")
+}
+
+// Enums
+enum SubscriptionTier {
+  BASIC // 5 instances
+  PRO // 20 instances
+  MAX // 40 instances
+}
+
+enum UserRole {
+  ADMINISTRATOR
+  USER
+}
+
+enum InstanceStatus {
+  DISCONNECTED
+  CONNECTING
+  CONNECTED
+  ERROR
+  PAUSED
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  DOCUMENT
+  AUDIO
+  VIDEO
+  LOCATION
+  CONTACT
+  STICKER
+}
+
+enum UsageType {
+  MESSAGES_SENT
+  MESSAGES_RECEIVED
+  API_CALLS
+  WEBHOOK_CALLS
+  STORAGE_USED
+}
