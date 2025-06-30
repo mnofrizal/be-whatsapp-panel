@@ -114,8 +114,8 @@ ApiKey (Integration Access)
 
 ```javascript
 // Single middleware handles both token types
-Authorization: Bearer jwt_eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...  // JWT
-Authorization: Bearer sk_live_4eC39HqLyjWDarjtT1zdp7dc                // API Key
+Authorization: Bearer jwt_xxx...  // JWT
+Authorization: Bearer sk_live_xxxxx           // API Key
 ```
 
 ### Authentication Flow
