@@ -2,7 +2,7 @@ import databaseConfig from "../config/database.js";
 import config from "../config/environment.js";
 import logger from "../utils/logger.js";
 import baileysService from "./baileys.service.js";
-import { ERROR_CODES } from "../utils/constants.js";
+import { ERROR_CODES, INSTANCE_STATUS } from "../utils/constants.js";
 
 class InstanceService {
   /**
@@ -555,6 +555,79 @@ class InstanceService {
   }
 
   /**
+   * Logout instance (sign out and delete session)
+   * @param {string} instanceId - Instance ID
+   * @param {string} subscriptionId - Subscription ID for validation
+   */
+  async logoutInstance(instanceId, subscriptionId) {
+    const prisma = databaseConfig.getClient();
+
+    try {
+      logger.info("Logging out instance", { instanceId, subscriptionId });
+
+      // Validate instance ownership
+      const instance = await this.getInstance(instanceId, subscriptionId);
+
+      if (!instance) {
+        throw new Error("Instance not found");
+      }
+
+      // Call logout on baileys service (this will delete session)
+      await baileysService.logoutInstance(instanceId);
+
+      // Update instance status to DISCONNECTED and clear session data
+      const updatedInstance = await prisma.instance.update({
+        where: { id: instanceId },
+        data: {
+          status: INSTANCE_STATUS.DISCONNECTED,
+          lastConnectedAt: null,
+          qrCode: null,
+          qrCodeExpiry: null,
+          phone: null,
+          displayName: null,
+        },
+      });
+
+      logger.info("Instance logged out successfully", {
+        instanceId,
+        subscriptionId,
+        status: updatedInstance.status,
+      });
+
+      return {
+        instanceId,
+        status: updatedInstance.status,
+        message: "Instance logged out and session deleted successfully",
+      };
+    } catch (error) {
+      logger.error("Failed to logout instance", {
+        instanceId,
+        subscriptionId,
+        error: error.message,
+      });
+
+      // Update status to ERROR if logout fails
+      try {
+        await prisma.instance.update({
+          where: { id: instanceId },
+          data: {
+            status: INSTANCE_STATUS.ERROR,
+            lastError: `Failed to logout: ${error.message}`,
+            lastErrorAt: new Date(),
+          },
+        });
+      } catch (updateError) {
+        logger.error("Failed to update instance status after logout error", {
+          instanceId,
+          error: updateError.message,
+        });
+      }
+
+      throw new Error(`Failed to logout instance: ${error.message}`);
+    }
+  }
+
+  /**
    * Restart instance connection
    * @param {string} instanceId - Instance ID
    * @param {string} subscriptionId - Subscription ID for validation
@@ -566,14 +639,8 @@ class InstanceService {
       // Validate instance ownership
       const instance = await this.getInstance(instanceId, subscriptionId);
 
-      // Disconnect first
-      await baileysService.disconnectInstance(instanceId);
-
-      // Wait a moment
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // Reconnect
-      await baileysService.createInstance(instanceId, instance.settings || {});
+      // Use the dedicated restart method that doesn't set manual disconnect flag
+      await baileysService.restartInstance(instanceId);
 
       logger.info("Instance restarted", { instanceId });
 

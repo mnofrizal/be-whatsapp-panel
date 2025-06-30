@@ -5,7 +5,7 @@
 @baseUrl = http://localhost:3000
 @token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbWNqYWdybG4wMDAydnYwamxxc3dubGYyIiwiZW1haWwiOiJhZG1pbkBhZG1pbi5jb20iLCJyb2xlIjoiQURNSU5JU1RSQVRPUiIsInN1YnNjcmlwdGlvbklkIjoiY21jamFncmxqMDAwMHZ2MGp0YzlsbDU5ZiIsImlhdCI6MTc1MTMwMTM3NCwiZXhwIjoxNzUxOTA2MTc0fQ.iSK5Laj_Xh4_ZK6HqSDjRcBG2J1mdRcQeAJ2UMj1XBs
 @instanceName = test-instance
-@instanceId = cmcjdoxml0004vvf3al4qpy05
+@instanceId = cmcjo5p870001vv185s2zfs6n
 
 ### ===========================================
 ### INSTANCE MANAGEMENT ENDPOINTS (JWT Required)
@@ -73,7 +73,11 @@ Authorization: Bearer {{token}}
 POST {{baseUrl}}/api/instances/{{instanceId}}/disconnect
 Authorization: Bearer {{token}}
 
-### 9. Restart Instance (by ID - Recommended)
+### 9. Logout Instance (by ID - Recommended)
+POST {{baseUrl}}/api/instances/{{instanceId}}/logout
+Authorization: Bearer {{token}}
+
+### 10. Restart Instance (by ID - Recommended)
 POST {{baseUrl}}/api/instances/{{instanceId}}/restart
 Authorization: Bearer {{token}}
 
@@ -81,11 +85,11 @@ Authorization: Bearer {{token}}
 ### QR CODE MANAGEMENT
 ### ===========================================
 
-### 10. Get QR Code (by ID - Recommended)
+### 11. Get QR Code (by ID - Recommended)
 GET {{baseUrl}}/api/instances/{{instanceId}}/qr
 Authorization: Bearer {{token}}
 
-### 11. Refresh QR Code (by ID - Recommended)
+### 12. Refresh QR Code (by ID - Recommended)
 POST {{baseUrl}}/api/instances/{{instanceId}}/qr/refresh
 Authorization: Bearer {{token}}
 
@@ -93,7 +97,7 @@ Authorization: Bearer {{token}}
 ### API KEY MANAGEMENT
 ### ===========================================
 
-### 12. Create API Key
+### 13. Create API Key
 POST {{baseUrl}}/api/instances/{{instanceName}}/keys
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -117,11 +121,11 @@ Content-Type: application/json
   "rateLimit": 1000
 }
 
-### 13. List API Keys
+### 14. List API Keys
 GET {{baseUrl}}/api/instances/{{instanceName}}/keys
 Authorization: Bearer {{token}}
 
-### 14. Update API Key
+### 15. Update API Key
 PUT {{baseUrl}}/api/instances/{{instanceName}}/keys/key_id_here
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -146,7 +150,7 @@ Content-Type: application/json
   "isActive": true
 }
 
-### 15. Delete API Key
+### 16. Delete API Key
 DELETE {{baseUrl}}/api/instances/{{instanceName}}/keys/key_id_here
 Authorization: Bearer {{token}}
 
@@ -154,7 +158,7 @@ Authorization: Bearer {{token}}
 ### WEBHOOK CONFIGURATION
 ### ===========================================
 
-### 16. Configure Webhook
+### 17. Configure Webhook
 POST {{baseUrl}}/api/instances/{{instanceName}}/webhook
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -171,11 +175,11 @@ Content-Type: application/json
   "isActive": true
 }
 
-### 17. Get Webhook Configuration
+### 18. Get Webhook Configuration
 GET {{baseUrl}}/api/instances/{{instanceName}}/webhook
 Authorization: Bearer {{token}}
 
-### 18. Update Webhook Configuration
+### 19. Update Webhook Configuration
 PUT {{baseUrl}}/api/instances/{{instanceName}}/webhook
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -190,7 +194,7 @@ Content-Type: application/json
   "isActive": true
 }
 
-### 19. Delete Webhook Configuration
+### 20. Delete Webhook Configuration
 DELETE {{baseUrl}}/api/instances/{{instanceName}}/webhook
 Authorization: Bearer {{token}}
 
@@ -198,11 +202,11 @@ Authorization: Bearer {{token}}
 ### STATISTICS & MONITORING
 ### ===========================================
 
-### 20. Get Instance Statistics
+### 21. Get Instance Statistics
 GET {{baseUrl}}/api/instances/{{instanceName}}/stats
 Authorization: Bearer {{token}}
 
-### 21. Get Instance Statistics (Date Range)
+### 22. Get Instance Statistics (Date Range)
 GET {{baseUrl}}/api/instances/{{instanceName}}/stats?startDate=2024-01-01&endDate=2024-01-31
 Authorization: Bearer {{token}}
 
@@ -210,7 +214,7 @@ Authorization: Bearer {{token}}
 ### SUBSCRIPTION & USAGE
 ### ===========================================
 
-### 22. Get Subscription Usage
+### 23. Get Subscription Usage
 GET {{baseUrl}}/api/instances/usage
 Authorization: Bearer {{token}}
 
@@ -218,22 +222,22 @@ Authorization: Bearer {{token}}
 ### ERROR TESTING
 ### ===========================================
 
-### 23. Test Invalid Instance Name
+### 24. Test Invalid Instance Name
 GET {{baseUrl}}/api/instances/non-existent-instance
 Authorization: Bearer {{token}}
 
-### 24. Test Unauthorized Access
+### 25. Test Unauthorized Access
 GET {{baseUrl}}/api/instances/{{instanceName}}
 
-### 25. Test Invalid Token
+### 26. Test Invalid Token
 GET {{baseUrl}}/api/instances/{{instanceName}}
 Authorization: Bearer invalid_token
 
-### 26. Test Rate Limiting (Send multiple requests quickly)
+### 27. Test Rate Limiting (Send multiple requests quickly)
 GET {{baseUrl}}/api/instances
 Authorization: Bearer {{token}}
 
-### 27. Test Validation Error
+### 28. Test Validation Error
 POST {{baseUrl}}/api/instances
 Authorization: Bearer {{token}}
 Content-Type: application/json

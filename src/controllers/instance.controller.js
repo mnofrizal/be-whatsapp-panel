@@ -489,6 +489,59 @@ class InstanceController {
   }
 
   /**
+   * Logout instance (sign out and delete session)
+   * @route POST /api/instances/:id/logout
+   */
+  static async logoutInstance(req, res) {
+    try {
+      const { id } = req.params;
+
+      const result = await instanceService.logoutInstance(
+        id,
+        req.user.subscriptionId
+      );
+
+      // Log audit event
+      await InstanceController.logAuditEvent(
+        AUDIT_ACTIONS.INSTANCE_LOGGED_OUT,
+        "instance",
+        id,
+        req
+      );
+
+      logger.info("Instance logged out", {
+        instanceId: id,
+        userId: req.user.id,
+        ip: Helpers.getClientIP(req),
+      });
+
+      res.status(HTTP_STATUS.OK).json(
+        Helpers.createResponse(true, result, {
+          request_id: req.requestId,
+        })
+      );
+    } catch (error) {
+      logger.error("Logout instance error:", {
+        error: error.message,
+        instanceId: req.params.id,
+        userId: req.user?.id,
+      });
+
+      const statusCode = error.message.includes("not found")
+        ? HTTP_STATUS.NOT_FOUND
+        : HTTP_STATUS.INTERNAL_SERVER_ERROR;
+
+      const errorCode = error.message.includes("not found")
+        ? ERROR_CODES.INSTANCE_NOT_FOUND
+        : ERROR_CODES.INTERNAL_ERROR;
+
+      res
+        .status(statusCode)
+        .json(Helpers.createErrorResponse(errorCode, error.message));
+    }
+  }
+
+  /**
    * Restart instance
    * @route POST /api/instances/:id/restart
    */

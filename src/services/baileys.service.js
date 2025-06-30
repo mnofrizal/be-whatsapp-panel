@@ -18,6 +18,7 @@ class BaileysService {
     this.connectionStates = new Map(); // instanceId -> connection state
     this.reconnectAttempts = new Map(); // instanceId -> attempt count
     this.qrAttempts = new Map(); // instanceId -> QR code attempt count
+    this.manualDisconnects = new Map(); // instanceId -> boolean (track manual disconnections)
     this.maxReconnectAttempts = 5;
     this.maxQRAttempts = 3; // Limit QR attempts per connection session
     this.reconnectDelay = 5000; // 5 seconds base delay
@@ -71,6 +72,9 @@ class BaileysService {
   async connectInstance(instanceId) {
     try {
       logger.info("Connecting instance", { instanceId });
+
+      // Clear manual disconnect flag when manually connecting
+      this.manualDisconnects.delete(instanceId);
 
       // Check if instance is already connected
       if (this.instances.has(instanceId)) {
@@ -146,27 +150,119 @@ class BaileysService {
    */
   async disconnectInstance(instanceId) {
     try {
-      logger.info("Disconnecting instance", { instanceId });
+      logger.info("Disconnecting instance (preserving session)", {
+        instanceId,
+      });
+
+      // Mark as manual disconnect to prevent auto-reconnection
+      this.manualDisconnects.set(instanceId, true);
 
       const socket = this.instances.get(instanceId);
       if (socket) {
-        await socket.logout();
+        // Only close the connection, don't logout (preserve session)
         socket.end();
         this.instances.delete(instanceId);
       }
 
-      // Clean up state
+      // Clean up state but preserve session
       this.qrCodes.delete(instanceId);
-      this.connectionStates.delete(instanceId);
+      this.connectionStates.set(instanceId, "DISCONNECTED");
       this.reconnectAttempts.delete(instanceId);
       this.qrAttempts.delete(instanceId);
 
       // Update database status
       await this.updateInstanceStatus(instanceId, "DISCONNECTED");
 
-      logger.info("Instance disconnected successfully", { instanceId });
+      logger.info("Instance disconnected successfully (session preserved)", {
+        instanceId,
+      });
     } catch (error) {
       logger.error("Failed to disconnect instance", {
+        instanceId,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Restart an instance (disconnect and reconnect)
+   * @param {string} instanceId - Instance identifier
+   */
+  async restartInstance(instanceId) {
+    try {
+      logger.info("Restarting instance", { instanceId });
+
+      // For restart, we don't want to set manual disconnect flag
+      // Just disconnect and immediately reconnect
+      const socket = this.instances.get(instanceId);
+      if (socket) {
+        socket.end();
+        this.instances.delete(instanceId);
+      }
+
+      // Clean up state but don't set manual disconnect flag
+      this.qrCodes.delete(instanceId);
+      this.connectionStates.set(instanceId, "DISCONNECTED");
+      this.reconnectAttempts.delete(instanceId);
+      this.qrAttempts.delete(instanceId);
+
+      // Immediately reconnect
+      await this.connectInstance(instanceId);
+
+      logger.info("Instance restarted successfully", { instanceId });
+    } catch (error) {
+      logger.error("Failed to restart instance", {
+        instanceId,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Logout an instance (sign out and delete session)
+   * @param {string} instanceId - Instance identifier
+   */
+  async logoutInstance(instanceId) {
+    try {
+      logger.info("Logging out instance (deleting session)", { instanceId });
+
+      const socket = this.instances.get(instanceId);
+      if (socket) {
+        // Call logout to delete session completely
+        await socket.logout();
+        socket.end();
+        this.instances.delete(instanceId);
+      }
+
+      // Clean up all state and session data
+      this.qrCodes.delete(instanceId);
+      this.connectionStates.delete(instanceId);
+      this.reconnectAttempts.delete(instanceId);
+      this.qrAttempts.delete(instanceId);
+
+      // Remove session files
+      const authDir = path.join(process.cwd(), "sessions", instanceId);
+      try {
+        await fs.rm(authDir, { recursive: true, force: true });
+        logger.info("Session files deleted", { instanceId, authDir });
+      } catch (error) {
+        logger.warn("Failed to delete session files", {
+          instanceId,
+          authDir,
+          error: error.message,
+        });
+      }
+
+      // Update database status
+      await this.updateInstanceStatus(instanceId, "DISCONNECTED");
+
+      logger.info("Instance logged out successfully (session deleted)", {
+        instanceId,
+      });
+    } catch (error) {
+      logger.error("Failed to logout instance", {
         instanceId,
         error: error.message,
       });
@@ -248,21 +344,8 @@ class BaileysService {
     try {
       logger.info("Deleting instance", { instanceId });
 
-      // Disconnect first
-      await this.disconnectInstance(instanceId);
-
-      // Remove session files
-      const authDir = path.join(process.cwd(), "sessions", instanceId);
-      try {
-        await fs.rm(authDir, { recursive: true, force: true });
-        logger.info("Session files deleted", { instanceId, authDir });
-      } catch (error) {
-        logger.warn("Failed to delete session files", {
-          instanceId,
-          authDir,
-          error: error.message,
-        });
-      }
+      // Logout first to properly sign out from WhatsApp servers
+      await this.logoutInstance(instanceId);
 
       logger.info("Instance deleted successfully", { instanceId });
     } catch (error) {
@@ -621,6 +704,16 @@ class BaileysService {
           : true;
 
       this.connectionStates.set(instanceId, "DISCONNECTED");
+
+      // Check if this was a manual disconnect
+      const isManualDisconnect = this.manualDisconnects.get(instanceId);
+      if (isManualDisconnect) {
+        logger.info("Manual disconnect detected, not attempting reconnection", {
+          instanceId,
+        });
+        await this.updateInstanceStatus(instanceId, "DISCONNECTED");
+        return; // Don't attempt reconnection for manual disconnects
+      }
 
       // Check if disconnection was due to QR timeout and max attempts reached
       const qrAttempts = this.qrAttempts.get(instanceId) || 0;
@@ -1025,6 +1118,7 @@ class BaileysService {
     this.connectionStates.clear();
     this.reconnectAttempts.clear();
     this.qrAttempts.clear();
+    this.manualDisconnects.clear();
     this.instanceConfigs?.clear();
 
     logger.info("Baileys service cleanup complete");

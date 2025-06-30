@@ -183,6 +183,18 @@ router.post(
 );
 
 /**
+ * @route POST /api/instances/:id/logout
+ * @desc Logout instance (sign out and delete session)
+ * @access Private (JWT required)
+ */
+router.post(
+  "/:id/logout",
+  validationMiddleware.validate(instanceIdSchema, "params"),
+  rateLimitMiddleware.instanceActions,
+  InstanceController.logoutInstance
+);
+
+/**
  * @route POST /api/instances/:id/restart
  * @desc Restart instance connection
  * @access Private (JWT required)
