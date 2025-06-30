@@ -6,11 +6,11 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite" // Start with SQLite, easy migration to "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
-// Subscription model - represents organization/company  
+// Subscription model - represents organization/company
 model Subscription {
   id           String           @id @default(cuid())
   name         String // Company/organization name
@@ -68,11 +68,11 @@ model Instance {
   lastDisconnectedAt DateTime?
 
   // Instance configuration
-  settings Json? // Instance-specific settings
+  settings String? // JSON string of settings
   isActive Boolean @default(true)
 
   // Connection info
-  qrCode             String? // Current QR code
+  qrCode             String? // Current QR code (base64)
   qrCodeExpiry       DateTime?
   connectionAttempts Int       @default(0)
   lastError          String?
@@ -98,7 +98,7 @@ model ApiKey {
   instanceId  String
   name        String // Human-readable name for the key
   keyHash     String    @unique // SHA-256 hash of the actual key
-  permissions Json // Array of permissions
+  permissions String // JSON string of permissions array
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -115,7 +115,7 @@ model ApiKey {
   @@map("api_keys")
 }
 
-// Message statistics for API monitoring
+// Message statistics for API monitoring (no content stored)
 model MessageStat {
   id               String @id @default(cuid())
   instanceId       String
@@ -133,11 +133,11 @@ model MessageStat {
   @@map("message_stats")
 }
 
-// Contact model - WhatsApp contacts
+// Contact model - WhatsApp contacts per instance
 model Contact {
   id            String    @id @default(cuid())
   instanceId    String
-  jid           String // WhatsApp JID
+  jid           String // WhatsApp JID (e.g., 6281234567890@s.whatsapp.net)
   name          String? // Contact name
   notify        String? // WhatsApp notify name
   isBlocked     Boolean   @default(false)
@@ -158,12 +158,12 @@ model Contact {
   @@map("contacts")
 }
 
-// Webhook configuration
+// Webhook configuration per instance
 model WebhookConfig {
   id         String   @id @default(cuid())
   instanceId String   @unique
   url        String // Webhook URL
-  events     Json // Array of events to send
+  events     String // JSON string of events array
   secret     String? // Secret for signature validation
   isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
@@ -182,7 +182,7 @@ model WebhookConfig {
   @@map("webhook_configs")
 }
 
-// Session data for Baileys
+// Session data for Baileys authentication
 model SessionData {
   id         String   @id @default(cuid())
   instanceId String   @unique
@@ -200,7 +200,7 @@ model SessionData {
   @@map("session_data")
 }
 
-// Usage tracking for billing/analytics
+// Usage tracking for analytics and future billing
 model UsageRecord {
   id             String    @id @default(cuid())
   subscriptionId String
@@ -211,7 +211,7 @@ model UsageRecord {
   recordDate     DateTime  @default(now())
 
   // Additional data
-  metadata Json? // Extra usage data
+  metadata String? // JSON string for extra usage data
 
   // Relations
   subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
@@ -224,7 +224,7 @@ model UsageRecord {
 // Audit log for security and compliance
 model AuditLog {
   id         String   @id @default(cuid())
-  action     String // Action performed (CREATE_INSTANCE, DELETE_INSTANCE, LOGIN, etc.)
+  action     String // Action performed (CREATE_INSTANCE, DELETE_INSTANCE, etc.)
   resource   String // Resource affected (instance, user, etc.)
   resourceId String? // ID of the affected resource
   userId     String? // User who performed the action
@@ -254,17 +254,6 @@ enum InstanceStatus {
   CONNECTED
   ERROR
   PAUSED
-}
-
-enum MessageType {
-  TEXT
-  IMAGE
-  DOCUMENT
-  AUDIO
-  VIDEO
-  LOCATION
-  CONTACT
-  STICKER
 }
 
 enum UsageType {

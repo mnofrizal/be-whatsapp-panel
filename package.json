@@ -1,9 +1,52 @@
 {
+  "name": "whatsapp-api-backend",
+  "version": "1.0.0",
+  "description": "Production-ready WhatsApp API Backend with multi-user support and subscription-based limits",
+  "main": "src/app.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "db:seed": "node prisma/seed.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "whatsapp",
+    "api",
+    "baileys",
+    "nodejs",
+    "express",
+    "prisma",
+    "multi-tenant"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
   "dependencies": {
     "@prisma/client": "^6.10.1",
-    "express": "^5.1.0"
+    "@whiskeysockets/baileys": "^6.7.18",
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.0.0",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.5.1",
+    "helmet": "^8.1.0",
+    "joi": "^17.13.3",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "multer": "^2.0.1",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.1",
+    "winston": "^3.17.0"
   },
   "devDependencies": {
+    "nodemon": "^3.1.10",
     "prisma": "^6.10.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

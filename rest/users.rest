@@ -1,0 +1,222 @@
+### User Management API Testing
+### Base URL: http://localhost:3000
+
+### Variables
+@baseUrl = http://localhost:3000
+@adminToken = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbWNqYWdybG4wMDAydnYwamxxc3dubGYyIiwiZW1haWwiOiJhZG1pbkBhZG1pbi5jb20iLCJyb2xlIjoiQURNSU5JU1RSQVRPUiIsInN1YnNjcmlwdGlvbklkIjoiY21jamFncmxqMDAwMHZ2MGp0YzlsbDU5ZiIsImlhdCI6MTc1MTMwMDE1MywiZXhwIjoxNzUxOTA0OTUzfQ.jKCayszWgIM-do_TzmeW34zIMjlqx07LjnxOZLcxws8
+@userToken = Bearer jwt_your_user_jwt_token_here
+@contentType = application/json
+
+### ============================================
+### ADMIN USER MANAGEMENT ENDPOINTS
+### ============================================
+
+
+### 0. Login with Admin User
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "admin@admin.com",
+  "password": "123456"
+}
+
+
+### 1. Create New User (Admin Only)
+POST {{baseUrl}}/api/users
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "email": "newuser1@example.com",
+  "password": "securepassword123",
+  "name": "New User",
+  "role": "USER"
+}
+
+### 2. Get All Users (Admin Only)
+GET {{baseUrl}}/api/users
+Authorization: {{adminToken}}
+
+### 3. Get All Users with Pagination (Admin Only)
+GET {{baseUrl}}/api/users?page=1&per_page=10&sort=desc&sort_by=createdAt
+Authorization: {{adminToken}}
+
+### 4. Get User by ID (Admin Only)
+GET {{baseUrl}}/api/users/user_id_here
+Authorization: {{adminToken}}
+
+### 5. Update User (Admin Only)
+PUT {{baseUrl}}/api/users/user_id_here
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Updated User Name",
+  "role": "USER",
+  "isActive": true
+}
+
+### 6. Update User Email (Admin Only)
+PUT {{baseUrl}}/api/users/user_id_here
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "email": "updated@example.com"
+}
+
+### 7. Deactivate User (Admin Only)
+PUT {{baseUrl}}/api/users/user_id_here
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "isActive": false
+}
+
+### 8. Delete User (Admin Only)
+DELETE {{baseUrl}}/api/users/user_id_here
+Authorization: {{adminToken}}
+
+### 9. Get Subscription Usage (Admin Only)
+GET {{baseUrl}}/api/users/subscription/usage
+Authorization: {{adminToken}}
+
+### ============================================
+### ERROR TESTING
+### ============================================
+
+### 10. Try to create user without admin role (should fail)
+POST {{baseUrl}}/api/users
+Authorization: {{userToken}}
+Content-Type: application/json
+
+{
+  "email": "shouldfail@example.com",
+  "password": "password123",
+  "name": "Should Fail"
+}
+
+### 11. Try to create user with existing email (should fail)
+POST {{baseUrl}}/api/users
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "password123",
+  "name": "Duplicate Email"
+}
+
+### 12. Try to create user with invalid data (should fail)
+POST {{baseUrl}}/api/users
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "email": "invalid-email",
+  "password": "123",
+  "name": "A"
+}
+
+### 13. Try to get non-existent user (should fail)
+GET {{baseUrl}}/api/users/non_existent_user_id
+Authorization: {{adminToken}}
+
+### 14. Try to update non-existent user (should fail)
+PUT {{baseUrl}}/api/users/non_existent_user_id
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Should Fail"
+}
+
+### 15. Try to delete non-existent user (should fail)
+DELETE {{baseUrl}}/api/users/non_existent_user_id
+Authorization: {{adminToken}}
+
+### ============================================
+### SELF-PROTECTION TESTING (Admin trying to modify themselves)
+### ============================================
+
+### 16. Try to change own role (should fail)
+PUT {{baseUrl}}/api/users/your_admin_user_id
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "role": "USER"
+}
+
+### 17. Try to deactivate own account (should fail)
+PUT {{baseUrl}}/api/users/your_admin_user_id
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "isActive": false
+}
+
+### 18. Try to delete own account (should fail)
+DELETE {{baseUrl}}/api/users/your_admin_user_id
+Authorization: {{adminToken}}
+
+### ============================================
+### RATE LIMITING TESTING
+### ============================================
+
+### 19. Test rate limiting on user creation (run multiple times quickly)
+POST {{baseUrl}}/api/users
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "email": "ratelimit1@example.com",
+  "password": "password123",
+  "name": "Rate Limit Test 1"
+}
+
+### 20. Test rate limiting on user creation (run multiple times quickly)
+POST {{baseUrl}}/api/users
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "email": "ratelimit2@example.com",
+  "password": "password123",
+  "name": "Rate Limit Test 2"
+}
+
+### ============================================
+### NOTES
+### ============================================
+
+# Before testing:
+# 1. Start the server: npm run dev
+# 2. Register an admin user via /api/auth/register
+# 3. Login to get JWT token via /api/auth/login
+# 4. Replace {{adminToken}} with actual Bearer token
+# 5. Replace user_id_here with actual user IDs from your database
+
+# Expected Responses:
+# - 201: User created successfully
+# - 200: User retrieved/updated successfully
+# - 400: Validation errors
+# - 401: Unauthorized (no token or invalid token)
+# - 403: Forbidden (insufficient permissions)
+# - 404: User not found
+# - 409: User already exists (duplicate email)
+# - 429: Rate limit exceeded
+
+# Admin Protection:
+# - Admins cannot change their own role
+# - Admins cannot deactivate their own account
+# - Admins cannot delete their own account
+# - Users with instances cannot be deleted
+
+# Multi-tenancy:
+# - Admins can only manage users within their subscription
+# - Users are automatically assigned to admin's subscription
+# - Complete data isolation between subscriptions

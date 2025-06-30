@@ -1,0 +1,186 @@
+### WhatsApp API Backend - Authentication Endpoints Testing
+### Make sure the server is running on http://localhost:3000
+
+### Variables
+@baseUrl = http://localhost:3000
+@contentType = application/json
+
+### Health Check
+GET {{baseUrl}}/health
+
+###
+
+### API Version
+GET {{baseUrl}}/api/version
+
+###
+
+### API Root
+GET {{baseUrl}}/api
+
+###
+
+### 1. Register New User
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "admin@admin.com",
+  "password": "123456",
+  "name": "Admin User"
+}
+
+###
+
+### 2. Register Second User (for testing)
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "user@user.com",
+  "password": "123456",
+  "name": "Regular User"
+}
+
+###
+
+### 3. Login with Admin User
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "admin@admin.com",
+  "password": "123456"
+}
+
+###
+
+### 4. Login with Regular User
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "user@user.com",
+  "password": "123456"
+}
+
+###
+
+### 5. Get Current User Info (Replace TOKEN with actual JWT from login response)
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+
+###
+
+### 6. Change Password (Replace TOKEN with actual JWT)
+POST {{baseUrl}}/api/auth/change-password
+Content-Type: {{contentType}}
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+
+{
+  "currentPassword": "securePassword123",
+  "newPassword": "newSecurePassword456"
+}
+
+###
+
+### 7. Refresh Token (Replace TOKEN with actual JWT)
+POST {{baseUrl}}/api/auth/refresh
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+
+###
+
+### 8. Logout (Replace TOKEN with actual JWT)
+POST {{baseUrl}}/api/auth/logout
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+
+###
+
+### Error Testing - Invalid Email Format
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "invalid-email",
+  "password": "securePassword123",
+  "name": "Test User"
+}
+
+###
+
+### Error Testing - Short Password
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "test@example.com",
+  "password": "123",
+  "name": "Test User"
+}
+
+###
+
+### Error Testing - Missing Fields
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "test@example.com"
+}
+
+###
+
+### Error Testing - Invalid Login Credentials
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "admin@example.com",
+  "password": "wrongpassword"
+}
+
+###
+
+### Error Testing - Non-existent User Login
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "nonexistent@example.com",
+  "password": "somepassword"
+}
+
+###
+
+### Error Testing - Unauthorized Access (No Token)
+GET {{baseUrl}}/api/auth/me
+
+###
+
+### Error Testing - Invalid Token
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer invalid_token_here
+
+###
+
+### Rate Limit Testing - Multiple Rapid Requests
+### Run this multiple times quickly to test rate limiting
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "admin@example.com",
+  "password": "wrongpassword"
+}
+
+###
+
+### Duplicate Registration Test
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "admin@example.com",
+  "password": "anotherPassword123",
+  "name": "Another Admin"
+}

@@ -1,0 +1,274 @@
+### WhatsApp API Backend - Instance Management Endpoints
+### Base URL: http://localhost:3000
+
+### Variables
+@baseUrl = http://localhost:3000
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbWNqYWdybG4wMDAydnYwamxxc3dubGYyIiwiZW1haWwiOiJhZG1pbkBhZG1pbi5jb20iLCJyb2xlIjoiQURNSU5JU1RSQVRPUiIsInN1YnNjcmlwdGlvbklkIjoiY21jamFncmxqMDAwMHZ2MGp0YzlsbDU5ZiIsImlhdCI6MTc1MTMwMTM3NCwiZXhwIjoxNzUxOTA2MTc0fQ.iSK5Laj_Xh4_ZK6HqSDjRcBG2J1mdRcQeAJ2UMj1XBs
+@instanceName = test-instance
+@instanceId = cmcjdoxml0004vvf3al4qpy05
+
+### ===========================================
+### INSTANCE MANAGEMENT ENDPOINTS (JWT Required)
+### ===========================================
+
+
+### 0. Login with Admin User
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@admin.com",
+  "password": "123456"
+}
+
+### 1. Create Instance
+POST {{baseUrl}}/api/instances
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "{{instanceName}}",
+  "displayName": "Test WhatsApp Instance",
+  "description": "Test instance for development"
+}
+
+### 2. List All Instances
+GET {{baseUrl}}/api/instances
+Authorization: Bearer {{token}}
+
+### 3. Get Instance Details (by ID - Recommended)
+GET {{baseUrl}}/api/instances/{{instanceId}}
+Authorization: Bearer {{token}}
+
+### 4. Update Instance (by ID - Recommended)
+PUT {{baseUrl}}/api/instances/{{instanceId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "updated-test-instance",
+  "settings": {
+    "autoReconnect": true,
+    "markOnlineOnConnect": true
+  }
+}
+
+### 5. Delete Instance (by ID - Recommended)
+DELETE {{baseUrl}}/api/instances/{{instanceId}}
+Authorization: Bearer {{token}}
+
+### ===========================================
+### INSTANCE STATUS & ACTIONS
+### ===========================================
+
+### 6. Get Instance Status (by ID - Recommended)
+GET {{baseUrl}}/api/instances/{{instanceId}}/status
+Authorization: Bearer {{token}}
+
+### 7. Connect Instance (by ID - Recommended)
+POST {{baseUrl}}/api/instances/{{instanceId}}/connect
+Authorization: Bearer {{token}}
+
+### 8. Disconnect Instance (by ID - Recommended)
+POST {{baseUrl}}/api/instances/{{instanceId}}/disconnect
+Authorization: Bearer {{token}}
+
+### 9. Restart Instance (by ID - Recommended)
+POST {{baseUrl}}/api/instances/{{instanceId}}/restart
+Authorization: Bearer {{token}}
+
+### ===========================================
+### QR CODE MANAGEMENT
+### ===========================================
+
+### 10. Get QR Code (by ID - Recommended)
+GET {{baseUrl}}/api/instances/{{instanceId}}/qr
+Authorization: Bearer {{token}}
+
+### 11. Refresh QR Code (by ID - Recommended)
+POST {{baseUrl}}/api/instances/{{instanceId}}/qr/refresh
+Authorization: Bearer {{token}}
+
+### ===========================================
+### API KEY MANAGEMENT
+### ===========================================
+
+### 12. Create API Key
+POST {{baseUrl}}/api/instances/{{instanceName}}/keys
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Development Key",
+  "permissions": {
+    "messages": {
+      "send": true,
+      "receive": true
+    },
+    "contacts": {
+      "read": true,
+      "check": true
+    },
+    "instance": {
+      "info": true,
+      "status": true
+    }
+  },
+  "rateLimit": 1000
+}
+
+### 13. List API Keys
+GET {{baseUrl}}/api/instances/{{instanceName}}/keys
+Authorization: Bearer {{token}}
+
+### 14. Update API Key
+PUT {{baseUrl}}/api/instances/{{instanceName}}/keys/key_id_here
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Updated Development Key",
+  "permissions": {
+    "messages": {
+      "send": true,
+      "receive": false
+    },
+    "contacts": {
+      "read": true,
+      "check": true
+    },
+    "instance": {
+      "info": true,
+      "status": true
+    }
+  },
+  "rateLimit": 500,
+  "isActive": true
+}
+
+### 15. Delete API Key
+DELETE {{baseUrl}}/api/instances/{{instanceName}}/keys/key_id_here
+Authorization: Bearer {{token}}
+
+### ===========================================
+### WEBHOOK CONFIGURATION
+### ===========================================
+
+### 16. Configure Webhook
+POST {{baseUrl}}/api/instances/{{instanceName}}/webhook
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "url": "https://your-app.com/webhook/whatsapp",
+  "events": [
+    "message.received",
+    "message.sent",
+    "connection.update",
+    "contact.update"
+  ],
+  "secret": "your-webhook-secret",
+  "isActive": true
+}
+
+### 17. Get Webhook Configuration
+GET {{baseUrl}}/api/instances/{{instanceName}}/webhook
+Authorization: Bearer {{token}}
+
+### 18. Update Webhook Configuration
+PUT {{baseUrl}}/api/instances/{{instanceName}}/webhook
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "url": "https://your-app.com/webhook/whatsapp-updated",
+  "events": [
+    "message.received",
+    "connection.update"
+  ],
+  "secret": "updated-webhook-secret",
+  "isActive": true
+}
+
+### 19. Delete Webhook Configuration
+DELETE {{baseUrl}}/api/instances/{{instanceName}}/webhook
+Authorization: Bearer {{token}}
+
+### ===========================================
+### STATISTICS & MONITORING
+### ===========================================
+
+### 20. Get Instance Statistics
+GET {{baseUrl}}/api/instances/{{instanceName}}/stats
+Authorization: Bearer {{token}}
+
+### 21. Get Instance Statistics (Date Range)
+GET {{baseUrl}}/api/instances/{{instanceName}}/stats?startDate=2024-01-01&endDate=2024-01-31
+Authorization: Bearer {{token}}
+
+### ===========================================
+### SUBSCRIPTION & USAGE
+### ===========================================
+
+### 22. Get Subscription Usage
+GET {{baseUrl}}/api/instances/usage
+Authorization: Bearer {{token}}
+
+### ===========================================
+### ERROR TESTING
+### ===========================================
+
+### 23. Test Invalid Instance Name
+GET {{baseUrl}}/api/instances/non-existent-instance
+Authorization: Bearer {{token}}
+
+### 24. Test Unauthorized Access
+GET {{baseUrl}}/api/instances/{{instanceName}}
+
+### 25. Test Invalid Token
+GET {{baseUrl}}/api/instances/{{instanceName}}
+Authorization: Bearer invalid_token
+
+### 26. Test Rate Limiting (Send multiple requests quickly)
+GET {{baseUrl}}/api/instances
+Authorization: Bearer {{token}}
+
+### 27. Test Validation Error
+POST {{baseUrl}}/api/instances
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "",
+  "displayName": ""
+}
+
+### ===========================================
+### INTEGRATION TESTING WORKFLOW
+### ===========================================
+
+### Step 1: Create instance
+### Step 2: Connect instance
+### Step 3: Get QR code
+### Step 4: Create API key
+### Step 5: Configure webhook
+### Step 6: Test messaging (will be in separate file)
+### Step 7: Monitor statistics
+### Step 8: Cleanup (disconnect, delete)
+
+### ===========================================
+### NOTES
+### ===========================================
+
+# 1. Replace {{token}} with actual JWT token from login
+# 2. Replace {{instanceId}} with actual instance ID (from create response)
+# 3. Replace {{instanceName}} with actual instance name (for create only)
+# 4. Replace key_id_here with actual API key ID
+# 5. All endpoints require valid JWT authentication
+# 6. Instance names must be unique within subscription
+# 7. API keys are tied to specific instances
+# 8. Webhooks require HTTPS URLs in production
+# 9. Rate limiting applies to all endpoints
+# 10. Subscription limits are enforced on instance creation
+# 11. QR codes expire after 60 seconds by default
+# 12. Use instanceId in URLs for better performance and case-insensitive access
