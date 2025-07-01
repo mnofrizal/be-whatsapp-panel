@@ -35,7 +35,6 @@ class WhatsAppAPIServer {
     try {
       // Connect to database
       await databaseConfig.connect();
-      logger.info("Database connected successfully");
 
       // Initialize Socket.IO
       socketService.initialize(this.server);

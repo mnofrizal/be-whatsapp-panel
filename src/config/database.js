@@ -7,6 +7,11 @@ class DatabaseConfig {
   }
 
   async connect() {
+    if (this.prisma && this.isConnected) {
+      logger.info("Database already connected, skipping.");
+      return this.prisma;
+    }
+
     try {
       this.prisma = new PrismaClient({
         log: [
@@ -45,11 +50,13 @@ class DatabaseConfig {
 
       // Test connection
       await this.prisma.$connect();
+      this.isConnected = true; // Set flag after successful connection
       logger.info("Database connected successfully");
 
       return this.prisma;
     } catch (error) {
       logger.error("Database connection failed:", error);
+      this.isConnected = false;
       throw error;
     }
   }

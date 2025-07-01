@@ -997,7 +997,7 @@ class InstanceService {
               });
             }
           } else {
-            logger.info("Instance initialized (disconnected)", {
+            logger.info(`Instance initialized (disconnected): ${instance.id}`, {
               instanceId: instance.id,
               instanceName: instance.name,
               status: instance.status,

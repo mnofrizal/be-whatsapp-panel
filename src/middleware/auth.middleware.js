@@ -112,12 +112,12 @@ class AuthMiddleware {
       req.subscription = user.subscription;
       req.authType = "jwt";
 
-      logger.auth("JWT authentication successful", {
-        userId: user.id,
-        email: user.email,
-        role: user.role,
-        ip: Helpers.getClientIP(req),
-      });
+      // logger.auth("JWT authentication successful", {
+      //   userId: user.id,
+      //   email: user.email,
+      //   role: user.role,
+      //   ip: Helpers.getClientIP(req),
+      // });
 
       next();
     } catch (error) {

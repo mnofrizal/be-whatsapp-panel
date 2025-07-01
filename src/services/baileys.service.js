@@ -33,7 +33,9 @@ class BaileysService {
    */
   async createInstance(instanceId, instanceConfig = {}) {
     try {
-      logger.info("Initializing Baileys instance", { instanceId });
+      logger.info(`Initializing Baileys instance: ${instanceId}`, {
+        instanceId,
+      });
 
       // Check if instance already exists
       if (this.instances.has(instanceId)) {
@@ -55,7 +57,9 @@ class BaileysService {
       this.connectionStates.set(instanceId, INSTANCE_STATUS.DISCONNECTED);
       this.reconnectAttempts.set(instanceId, 0);
 
-      logger.info("Baileys instance initialized successfully", { instanceId });
+      logger.info(`Baileys instance initialized successfully: ${instanceId}`, {
+        instanceId,
+      });
       return { instanceId, status: INSTANCE_STATUS.DISCONNECTED };
     } catch (error) {
       logger.error("Failed to initialize Baileys instance", {
