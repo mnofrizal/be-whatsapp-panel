@@ -3,7 +3,7 @@
 
 ### Variables
 @baseUrl = http://localhost:3000
-@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbWNqYWdybG4wMDAydnYwamxxc3dubGYyIiwiZW1haWwiOiJhZG1pbkBhZG1pbi5jb20iLCJyb2xlIjoiQURNSU5JU1RSQVRPUiIsInN1YnNjcmlwdGlvbklkIjoiY21jamFncmxqMDAwMHZ2MGp0YzlsbDU5ZiIsImlhdCI6MTc1MTMwMTM3NCwiZXhwIjoxNzUxOTA2MTc0fQ.iSK5Laj_Xh4_ZK6HqSDjRcBG2J1mdRcQeAJ2UMj1XBs
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbWNqd3U4dWwwMDAydm5rOHI1enJoZmRuIiwiZW1haWwiOiJtYWlsLmNhdGF0a3V5QGdtYWlsLmNvbSIsInJvbGUiOiJBRE1JTklTVFJBVE9SIiwic3Vic2NyaXB0aW9uSWQiOiJjbWNqd3U4dWgwMDAwdm5rOG5qb2ZuZGM1IiwiaWF0IjoxNzUxMzQwMTc0LCJleHAiOjE3NTE5NDQ5NzR9.VS6owYUeAOulBLjFYds2pCswQkqxmrkzNk1RC7Gg-QE
 @instanceName = test-instance
 @instanceId = cmcjo5p870001vv185s2zfs6n
 
@@ -74,7 +74,7 @@ POST {{baseUrl}}/api/instances/{{instanceId}}/disconnect
 Authorization: Bearer {{token}}
 
 ### 9. Logout Instance (by ID - Recommended)
-POST {{baseUrl}}/api/instances/{{instanceId}}/logout
+POST {{baseUrl}}/api/instances/cmcjwvijs0001vny8088pg6gz/logout
 Authorization: Bearer {{token}}
 
 ### 10. Restart Instance (by ID - Recommended)

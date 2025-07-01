@@ -91,11 +91,21 @@ const SUBSCRIPTION_TIERS = {
 
 // Instance Status
 const INSTANCE_STATUS = {
-  DISCONNECTED: "DISCONNECTED",
-  CONNECTING: "CONNECTING",
-  CONNECTED: "CONNECTED",
-  ERROR: "ERROR",
-  PAUSED: "PAUSED",
+  INIT: "INIT", // Initializing connection
+  QR_REQUIRED: "QR_REQUIRED", // QR code must be scanned to log in
+  CONNECTED: "CONNECTED", // WhatsApp session is active
+  DISCONNECTED: "DISCONNECTED", // Phone disconnected, or session terminated
+  RECONNECTING: "RECONNECTING", // Trying to re-establish session
+  ERROR: "ERROR", // Fatal error (e.g., banned, QR scan expired)
+};
+
+const SOCKET_EVENTS = {
+  INSTANCE_STATUS_CHANGED: "instance:status:changed",
+  INSTANCE_QR_GENERATED: "instance:qr:generated",
+  INSTANCE_CONNECTED: "instance:connected",
+  INSTANCE_DISCONNECTED: "instance:disconnected",
+  INSTANCE_ERROR: "instance:error",
+  SUBSCRIPTION_STATS: "subscription:stats:updated",
 };
 
 // Usage Types
@@ -232,6 +242,7 @@ export {
   USER_ROLES,
   SUBSCRIPTION_TIERS,
   INSTANCE_STATUS,
+  SOCKET_EVENTS,
   USAGE_TYPES,
   MESSAGE_TYPES,
   WEBHOOK_EVENTS,

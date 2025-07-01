@@ -2,6 +2,7 @@ import databaseConfig from "../config/database.js";
 import config from "../config/environment.js";
 import logger from "../utils/logger.js";
 import baileysService from "./baileys.service.js";
+import socketService from "./socket.service.js";
 import { ERROR_CODES, INSTANCE_STATUS } from "../utils/constants.js";
 
 class InstanceService {

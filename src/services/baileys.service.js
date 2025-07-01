@@ -10,6 +10,8 @@ import fs from "fs/promises";
 import databaseConfig from "../config/database.js";
 import logger from "../utils/logger.js";
 import config from "../config/environment.js";
+import socketService from "./socket.service.js";
+import { INSTANCE_STATUS } from "../utils/constants.js";
 
 class BaileysService {
   constructor() {
@@ -50,11 +52,11 @@ class BaileysService {
       });
 
       // Set initial state as disconnected
-      this.connectionStates.set(instanceId, "DISCONNECTED");
+      this.connectionStates.set(instanceId, INSTANCE_STATUS.DISCONNECTED);
       this.reconnectAttempts.set(instanceId, 0);
 
       logger.info("Baileys instance initialized successfully", { instanceId });
-      return { instanceId, status: "DISCONNECTED" };
+      return { instanceId, status: INSTANCE_STATUS.DISCONNECTED };
     } catch (error) {
       logger.error("Failed to initialize Baileys instance", {
         instanceId,
@@ -79,7 +81,10 @@ class BaileysService {
       // Check if instance is already connected
       if (this.instances.has(instanceId)) {
         const currentState = this.connectionStates.get(instanceId);
-        if (currentState === "CONNECTED" || currentState === "CONNECTING") {
+        if (
+          currentState === INSTANCE_STATUS.CONNECTED ||
+          currentState === INSTANCE_STATUS.CONNECTING
+        ) {
           logger.info("Instance already connecting/connected", {
             instanceId,
             currentState,
@@ -123,7 +128,7 @@ class BaileysService {
 
       // Store instance
       this.instances.set(instanceId, socket);
-      this.connectionStates.set(instanceId, "CONNECTING");
+      this.connectionStates.set(instanceId, INSTANCE_STATUS.CONNECTING);
       this.reconnectAttempts.set(instanceId, 0);
       this.qrAttempts.set(instanceId, 0); // Reset QR attempts for new connection
 
@@ -131,7 +136,7 @@ class BaileysService {
       this.setupEventHandlers(instanceId, socket, saveCreds);
 
       // Update database status
-      await this.updateInstanceStatus(instanceId, "CONNECTING");
+      await this.updateInstanceStatus(instanceId, INSTANCE_STATUS.CONNECTING);
 
       logger.info("Instance connection initiated", { instanceId });
       return socket;
@@ -166,12 +171,12 @@ class BaileysService {
 
       // Clean up state but preserve session
       this.qrCodes.delete(instanceId);
-      this.connectionStates.set(instanceId, "DISCONNECTED");
+      this.connectionStates.set(instanceId, INSTANCE_STATUS.DISCONNECTED);
       this.reconnectAttempts.delete(instanceId);
       this.qrAttempts.delete(instanceId);
 
       // Update database status
-      await this.updateInstanceStatus(instanceId, "DISCONNECTED");
+      await this.updateInstanceStatus(instanceId, INSTANCE_STATUS.DISCONNECTED);
 
       logger.info("Instance disconnected successfully (session preserved)", {
         instanceId,
@@ -203,7 +208,7 @@ class BaileysService {
 
       // Clean up state but don't set manual disconnect flag
       this.qrCodes.delete(instanceId);
-      this.connectionStates.set(instanceId, "DISCONNECTED");
+      this.connectionStates.set(instanceId, INSTANCE_STATUS.DISCONNECTED);
       this.reconnectAttempts.delete(instanceId);
       this.qrAttempts.delete(instanceId);
 
@@ -256,7 +261,7 @@ class BaileysService {
       }
 
       // Update database status
-      await this.updateInstanceStatus(instanceId, "DISCONNECTED");
+      await this.updateInstanceStatus(instanceId, INSTANCE_STATUS.DISCONNECTED);
 
       logger.info("Instance logged out successfully (session deleted)", {
         instanceId,
@@ -315,7 +320,11 @@ class BaileysService {
       this.reconnectAttempts.set(instanceId, 999); // Set high value to prevent reconnection
 
       // Update database status with error
-      await this.updateInstanceStatus(instanceId, "DISCONNECTED", reason);
+      await this.updateInstanceStatus(
+        instanceId,
+        INSTANCE_STATUS.DISCONNECTED,
+        reason
+      );
 
       logger.info(
         `Instance [${instanceName}] force disconnected successfully - manual reconnection required`,
@@ -388,7 +397,7 @@ class BaileysService {
 
     return {
       exists: !!socket,
-      connectionState: connectionState || "DISCONNECTED",
+      connectionState: connectionState || INSTANCE_STATUS.DISCONNECTED,
       reconnectAttempts,
       qrAttempts,
       maxQRAttempts: this.maxQRAttempts,
@@ -587,8 +596,11 @@ class BaileysService {
       } else if (connection === "open") {
         await this.handleConnectionOpen(instanceId);
       } else if (connection === "connecting") {
-        this.connectionStates.set(instanceId, "CONNECTING");
-        await this.updateInstanceStatus(instanceId, "CONNECTING");
+        const attempts = this.reconnectAttempts.get(instanceId) || 0;
+        const newStatus =
+          attempts > 0 ? INSTANCE_STATUS.RECONNECTING : INSTANCE_STATUS.INIT;
+        this.connectionStates.set(instanceId, newStatus);
+        await this.updateInstanceStatus(instanceId, newStatus);
       }
     } catch (error) {
       logger.error("Error handling connection update", {
@@ -613,6 +625,9 @@ class BaileysService {
         });
         return;
       }
+
+      this.connectionStates.set(instanceId, INSTANCE_STATUS.QR_REQUIRED);
+      await this.updateInstanceStatus(instanceId, INSTANCE_STATUS.QR_REQUIRED);
 
       // Get instance name for better logging
       const instanceName = await this.getInstanceName(instanceId);
@@ -664,13 +679,23 @@ class BaileysService {
 
       // Update database with raw QR string
       const prisma = databaseConfig.getClient();
-      await prisma.instance.update({
+      const instance = await prisma.instance.update({
         where: { id: instanceId },
         data: {
           qrCode: qr, // Store raw QR string
           qrCodeExpiry: expiry,
         },
       });
+
+      socketService.emitInstanceQRGenerated(
+        instanceId,
+        instance.subscriptionId,
+        {
+          qr,
+          expiry,
+          attempt: newAttempts,
+        }
+      );
 
       logger.info(
         `QR code #${newAttempts} generated successfully for instance [${instanceName}] - expires in 60 seconds`,
@@ -703,7 +728,7 @@ class BaileysService {
             DisconnectReason.loggedOut
           : true;
 
-      this.connectionStates.set(instanceId, "DISCONNECTED");
+      this.connectionStates.set(instanceId, INSTANCE_STATUS.DISCONNECTED);
 
       // Check if this was a manual disconnect
       const isManualDisconnect = this.manualDisconnects.get(instanceId);
@@ -711,7 +736,10 @@ class BaileysService {
         logger.info("Manual disconnect detected, not attempting reconnection", {
           instanceId,
         });
-        await this.updateInstanceStatus(instanceId, "DISCONNECTED");
+        await this.updateInstanceStatus(
+          instanceId,
+          INSTANCE_STATUS.DISCONNECTED
+        );
         return; // Don't attempt reconnection for manual disconnects
       }
 
@@ -731,7 +759,7 @@ class BaileysService {
 
         await this.updateInstanceStatus(
           instanceId,
-          "DISCONNECTED",
+          INSTANCE_STATUS.DISCONNECTED,
           `Maximum QR attempts (${this.maxQRAttempts}) reached. Manual reconnection required.`
         );
 
@@ -740,7 +768,7 @@ class BaileysService {
         return;
       }
 
-      await this.updateInstanceStatus(instanceId, "DISCONNECTED");
+      await this.updateInstanceStatus(instanceId, INSTANCE_STATUS.DISCONNECTED);
 
       if (shouldReconnect) {
         await this.attemptReconnect(instanceId);
@@ -765,28 +793,29 @@ class BaileysService {
       const socket = this.instances.get(instanceId);
       if (!socket) return;
 
-      this.connectionStates.set(instanceId, "CONNECTED");
+      this.connectionStates.set(instanceId, INSTANCE_STATUS.CONNECTED);
       this.reconnectAttempts.set(instanceId, 0);
 
       // Clear QR code
       this.qrCodes.delete(instanceId);
 
-      // Update database with connection info
-      const prisma = databaseConfig.getClient();
-      await prisma.instance.update({
-        where: { id: instanceId },
-        data: {
-          status: "CONNECTED",
-          phone: socket.user?.id ? socket.user.id.split(":")[0] : null,
-          displayName: socket.user?.name || null,
-          lastConnectedAt: new Date(),
-          qrCode: null,
-          qrCodeExpiry: null,
-          connectionAttempts: 0,
-          lastError: null,
-          lastErrorAt: null,
-        },
-      });
+      // Prepare connection data
+      const connectionData = {
+        phone: socket.user?.id ? socket.user.id.split(":")[0] : null,
+        displayName: socket.user?.name || null,
+        lastConnectedAt: new Date(),
+        qrCode: null,
+        qrCodeExpiry: null,
+        connectionAttempts: 0,
+      };
+
+      // Update status and connection info in one go
+      await this.updateInstanceStatus(
+        instanceId,
+        INSTANCE_STATUS.CONNECTED,
+        null,
+        connectionData
+      );
 
       logger.info("Instance connected successfully", {
         instanceId,
@@ -824,7 +853,7 @@ class BaileysService {
         logger.warn("Max reconnect attempts reached", { instanceId, attempts });
         await this.updateInstanceStatus(
           instanceId,
-          "ERROR",
+          INSTANCE_STATUS.ERROR,
           "Max reconnect attempts reached"
         );
         return;
@@ -937,33 +966,60 @@ class BaileysService {
    * @param {string} status - New status
    * @param {string} error - Error message (optional)
    */
-  async updateInstanceStatus(instanceId, status, error = null) {
+  async updateInstanceStatus(
+    instanceId,
+    newStatus,
+    error = null,
+    extraData = {}
+  ) {
     try {
       const prisma = databaseConfig.getClient();
 
+      const currentInstance = await prisma.instance.findUnique({
+        where: { id: instanceId },
+        select: { status: true, subscriptionId: true },
+      });
+      const oldStatus = currentInstance?.status;
+
       const updateData = {
-        status,
+        status: newStatus,
         updatedAt: new Date(),
+        ...extraData,
       };
 
-      if (status === "DISCONNECTED") {
+      if (newStatus === INSTANCE_STATUS.DISCONNECTED) {
         updateData.lastDisconnectedAt = new Date();
       }
 
       if (error) {
         updateData.lastError = error;
         updateData.lastErrorAt = new Date();
+      } else if (newStatus === INSTANCE_STATUS.CONNECTED) {
+        // Clear previous error on successful connection
+        updateData.lastError = null;
+        updateData.lastErrorAt = null;
       }
 
       await prisma.instance.update({
         where: { id: instanceId },
         data: updateData,
       });
-    } catch (error) {
+
+      if (oldStatus !== newStatus) {
+        socketService.emitInstanceStatusChange(
+          instanceId,
+          currentInstance.subscriptionId,
+          oldStatus,
+          newStatus,
+          { error, timestamp: new Date().toISOString(), ...extraData }
+        );
+      }
+      return currentInstance;
+    } catch (dbError) {
       logger.error("Failed to update instance status", {
         instanceId,
-        status,
-        error: error.message,
+        status: newStatus,
+        error: dbError.message,
       });
     }
   }

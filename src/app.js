@@ -3,11 +3,13 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import path from "path";
+import http from "http";
 
 // Import configurations
 import config from "./config/environment.js";
 import databaseConfig from "./config/database.js";
 import instanceService from "./services/instance.service.js";
+import socketService from "./services/socket.service.js";
 import logger from "./utils/logger.js";
 import Helpers from "./utils/helpers.js";
 import { HTTP_STATUS, ERROR_CODES } from "./utils/constants.js";
@@ -23,7 +25,7 @@ import instanceRoutes from "./routes/instance.routes.js";
 class WhatsAppAPIServer {
   constructor() {
     this.app = express();
-    this.server = null;
+    this.server = http.createServer(this.app);
   }
 
   /**
@@ -34,6 +36,10 @@ class WhatsAppAPIServer {
       // Connect to database
       await databaseConfig.connect();
       logger.info("Database connected successfully");
+
+      // Initialize Socket.IO
+      socketService.initialize(this.server);
+      logger.info("Socket.IO initialized");
 
       // Initialize instance service
       await instanceService.initializeInstances();
@@ -283,7 +289,7 @@ class WhatsAppAPIServer {
     try {
       await this.initialize();
 
-      this.server = this.app.listen(config.port, () => {
+      this.server.listen(config.port, () => {
         logger.info(`🚀 WhatsApp API Server started successfully`);
         logger.info(`📡 Server running on port ${config.port}`);
         logger.info(`🌍 Environment: ${config.nodeEnv}`);
@@ -349,11 +355,9 @@ class WhatsAppAPIServer {
 const server = new WhatsAppAPIServer();
 
 // Start server if this file is run directly
-if (import.meta.url === new URL(process.argv[1], "file:").href) {
-  server.start().catch((error) => {
-    logger.error("Failed to start server:", error);
-    process.exit(1);
-  });
-}
+server.start().catch((error) => {
+  logger.error("Failed to start server:", error);
+  process.exit(1);
+});
 
 export default server;

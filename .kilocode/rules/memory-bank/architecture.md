@@ -307,6 +307,9 @@ Client Dashboard → Socket.IO → Event Emitter → Baileys Events
 - **Message Events**: Message sent/received statistics (no content)
 - **System Events**: Health status, error notifications
 - **User Events**: Instance creation, subscription changes
+- **`instance:status:changed`**: Emitted when an instance's connection status changes (e.g., from `CONNECTING` to `CONNECTED`).
+- **`instance:qr:generated`**: Emitted when a new QR code is generated for an instance.
+- **`instance:error`**: Emitted when an instance encounters an error.
 
 ## 🚀 Deployment Architecture
 

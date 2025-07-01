@@ -249,11 +249,12 @@ enum UserRole {
 }
 
 enum InstanceStatus {
-  DISCONNECTED
-  CONNECTING
-  CONNECTED
-  ERROR
-  PAUSED
+  INIT // Initializing connection
+  QR_REQUIRED // QR code must be scanned to log in
+  CONNECTED // WhatsApp session is active
+  DISCONNECTED // Phone disconnected, or session terminated
+  RECONNECTING // Trying to re-establish session
+  ERROR // Fatal error (e.g., banned, QR scan expired)
 }
 
 enum UsageType {
