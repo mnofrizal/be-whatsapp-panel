@@ -1,0 +1,187 @@
+### WhatsApp API Backend - Messaging Integration Tests
+### Phase 3: Integration APIs (API Key Authentication Required)
+
+@baseUrl = http://localhost:3000
+@apiKey = wa_df73ec65448a1d4a9022ffdd36305b6df3f9a49d138f3589bef0feba8cb0b1da
+
+### 1. Send Text Message
+POST {{baseUrl}}/api/messages/text
+Authorization: Bearer {{apiKey}}
+Content-Type: application/json
+
+{
+  "to": "6287733760363",
+  "message": "Hello from WhatsApp API! This is a test message."
+}
+
+### 2. Send Image Message
+POST {{baseUrl}}/api/messages/image
+Authorization: Bearer {{apiKey}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="to"
+
+6287733760363
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="caption"
+
+Check out this image!
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="image"; filename="test.jpg"
+Content-Type: image/jpeg
+
+< ./test-files/sample-image.jpg
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 3. Send Document Message
+POST {{baseUrl}}/api/messages/document
+Authorization: Bearer {{apiKey}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="to"
+
+6281234567890
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="caption"
+
+Important document attached
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document"; filename="sample.pdf"
+Content-Type: application/pdf
+
+< ./test-files/sample-document.pdf
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 4. Send Audio Message
+POST {{baseUrl}}/api/messages/audio
+Authorization: Bearer {{apiKey}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="to"
+
+6281234567890
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="audio"; filename="voice-note.mp3"
+Content-Type: audio/mpeg
+
+< ./test-files/sample-audio.mp3
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 5. Send Location Message
+POST {{baseUrl}}/api/messages/location
+Authorization: Bearer {{apiKey}}
+Content-Type: application/json
+
+{
+  "to": "6287733760363",
+  "latitude": -6.2088,
+  "longitude": 106.8456,
+  "name": "Jakarta, Indonesia",
+  "address": "Jakarta, Special Capital Region of Jakarta, Indonesia"
+}
+
+### 6. Check Phone Numbers
+POST {{baseUrl}}/api/contacts/check
+Authorization: Bearer {{apiKey}}
+Content-Type: application/json
+
+{
+  "phoneNumbers": [
+    "6287733760363",
+    "6289876543210",
+    "628123456789"
+  ]
+}
+
+### 7. Get Instance Information
+GET {{baseUrl}}/api/instance/info
+Authorization: Bearer {{apiKey}}
+
+### 8. Get Message Statistics
+GET {{baseUrl}}/api/stats
+Authorization: Bearer {{apiKey}}
+
+### 9. Get Detailed Statistics with Date Range
+GET {{baseUrl}}/api/stats?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{apiKey}}
+
+### 10. Test Rate Limiting (send multiple requests quickly)
+POST {{baseUrl}}/api/messages/text
+Authorization: Bearer {{apiKey}}
+Content-Type: application/json
+
+{
+  "to": "6281234567890",
+  "message": "Rate limit test message 1"
+}
+
+###
+POST {{baseUrl}}/api/messages/text
+Authorization: Bearer {{apiKey}}
+Content-Type: application/json
+
+{
+  "to": "6281234567890",
+  "message": "Rate limit test message 2"
+}
+
+###
+POST {{baseUrl}}/api/messages/text
+Authorization: Bearer {{apiKey}}
+Content-Type: application/json
+
+{
+  "to": "6281234567890",
+  "message": "Rate limit test message 3"
+}
+
+### 11. Test Invalid Phone Number
+POST {{baseUrl}}/api/messages/text
+Authorization: Bearer {{apiKey}}
+Content-Type: application/json
+
+{
+  "to": "invalid-phone",
+  "message": "This should fail validation"
+}
+
+### 12. Test Missing Required Fields
+POST {{baseUrl}}/api/messages/text
+Authorization: Bearer {{apiKey}}
+Content-Type: application/json
+
+{
+  "to": "6281234567890"
+}
+
+### 13. Test Unauthorized Access (no API key)
+POST {{baseUrl}}/api/messages/text
+Content-Type: application/json
+
+{
+  "to": "6281234567890",
+  "message": "This should fail authentication"
+}
+
+### 14. Test Invalid API Key
+POST {{baseUrl}}/api/messages/text
+Authorization: Bearer invalid-api-key-12345
+Content-Type: application/json
+
+{
+  "to": "6281234567890",
+  "message": "This should fail authentication"
+}
+
+### 15. Test Permission Denied (if API key doesn't have message.send permission)
+POST {{baseUrl}}/api/messages/text
+Authorization: Bearer {{apiKey}}
+Content-Type: application/json
+
+{
+  "to": "6281234567890",
+  "message": "This might fail if permissions are restricted"
+}

@@ -3,7 +3,7 @@
 
 ### Variables
 @baseUrl = http://localhost:3000
-@adminToken = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbWNqYWdybG4wMDAydnYwamxxc3dubGYyIiwiZW1haWwiOiJhZG1pbkBhZG1pbi5jb20iLCJyb2xlIjoiQURNSU5JU1RSQVRPUiIsInN1YnNjcmlwdGlvbklkIjoiY21jamFncmxqMDAwMHZ2MGp0YzlsbDU5ZiIsImlhdCI6MTc1MTMwMDE1MywiZXhwIjoxNzUxOTA0OTUzfQ.jKCayszWgIM-do_TzmeW34zIMjlqx07LjnxOZLcxws8
+@adminToken = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbWNrZzJuaG4wMDAydnZoNnBveDJzdm5xIiwiZW1haWwiOiJhZG1pbkBhZG1pbi5jb20iLCJyb2xlIjoiQURNSU5JU1RSQVRPUiIsInN1YnNjcmlwdGlvbklkIjoiY21ja2cybmhmMDAwMHZ2aDZoYXlnM20zcSIsImlhdCI6MTc1MTM3NzQyNCwiZXhwIjoxNzUxOTgyMjI0fQ.LZdFrPyPZ3803cWkl1vBaIMN0uTCnrJIoPmi6727DyI
 @userToken = Bearer jwt_your_user_jwt_token_here
 @contentType = application/json
 
@@ -76,7 +76,7 @@ Content-Type: application/json
 }
 
 ### 8. Delete User (Admin Only)
-DELETE {{baseUrl}}/api/users/user_id_here
+DELETE {{baseUrl}}/api/users/cmckkr57k0002vvi1oip8z8u2
 Authorization: {{adminToken}}
 
 ### 9. Get Subscription Usage (Admin Only)

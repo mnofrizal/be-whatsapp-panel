@@ -339,9 +339,10 @@ class AuthMiddleware {
           );
       }
 
-      const permissions = Helpers.safeJSONParse(req.apiKey.permissions, []);
+      const permissions = Helpers.safeJSONParse(req.apiKey.permissions, {});
 
-      if (!permissions.includes(permission)) {
+      // Check nested permission structure (e.g., "messages.send" -> permissions.messages.send)
+      if (!AuthMiddleware.hasPermission(permissions, permission)) {
         logger.security("Permission denied", {
           keyId: req.apiKey.id,
           requiredPermission: permission,
@@ -361,6 +362,33 @@ class AuthMiddleware {
 
       next();
     };
+  }
+
+  /**
+   * Check if nested permission object contains the required permission
+   * @param {Object} permissions - The permissions object
+   * @param {String} permission - The permission to check (e.g., "messages.send")
+   * @returns {Boolean} - Whether the permission is granted
+   */
+  static hasPermission(permissions, permission) {
+    const [category, action] = permission.split(".");
+
+    if (!permissions[category]) {
+      return false;
+    }
+
+    if (typeof permissions[category] === "boolean") {
+      return permissions[category];
+    }
+
+    if (
+      typeof permissions[category] === "object" &&
+      permissions[category][action] !== undefined
+    ) {
+      return permissions[category][action] === true;
+    }
+
+    return false;
   }
 
   /**

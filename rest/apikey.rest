@@ -1,0 +1,103 @@
+### WhatsApp API Backend - API Key Management Tests
+### Phase 3: API Key Management (JWT Authentication Required)
+
+@baseUrl = http://localhost:3000
+@jwtToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbWNrZzJuaG4wMDAydnZoNnBveDJzdm5xIiwiZW1haWwiOiJhZG1pbkBhZG1pbi5jb20iLCJyb2xlIjoiQURNSU5JU1RSQVRPUiIsInN1YnNjcmlwdGlvbklkIjoiY21ja2cybmhmMDAwMHZ2aDZoYXlnM20zcSIsImlhdCI6MTc1MTM3MjU1MSwiZXhwIjoxNzUxOTc3MzUxfQ.vdjwZtj9Ugi2vv1bIcPhnfGGOtD6g8FuFljZSUiK3mQ
+@instanceId = cmckg2zbe0006vvh6o8zc3ao6
+@keyId = cmcki7c7o0001vvpgcl0s4ruy
+
+### 1. Create API Key for Instance
+POST {{baseUrl}}/api/instances/{{instanceId}}/keys
+Authorization: Bearer {{jwtToken}}
+Content-Type: application/json
+
+{
+  "name": "Production API Key",
+  "permissions": {
+    "messages": {
+      "send": true,
+      "receive": true
+    },
+    "contacts": {
+      "check": true
+    },
+    "instance": {
+      "info": true,
+      "stats": true
+    }
+  },
+  "rateLimit": 1000
+}
+
+### 2. List API Keys for Instance
+GET {{baseUrl}}/api/instances/{{instanceId}}/keys
+Authorization: Bearer {{jwtToken}}
+
+### 3. Get Specific API Key
+GET {{baseUrl}}/api/instances/{{instanceId}}/keys/{{keyId}}
+Authorization: Bearer {{jwtToken}}
+
+### 4. Update API Key
+PUT {{baseUrl}}/api/instances/{{instanceId}}/keys/{{keyId}}
+Authorization: Bearer {{jwtToken}}
+Content-Type: application/json
+
+{
+  "name": "Updated Production API Key",
+  "permissions": {
+    "messages": {
+      "send": true,
+      "receive": false
+    },
+    "contacts": {
+      "check": true
+    },
+    "instance": {
+      "info": true,
+      "stats": false
+    }
+  },
+  "rateLimit": 500,
+  "isActive": true
+}
+
+### 5. Get API Key Usage Statistics
+GET {{baseUrl}}/api/instances/{{instanceId}}/keys/{{keyId}}/usage
+Authorization: Bearer {{jwtToken}}
+
+### 6. Regenerate API Key
+POST {{baseUrl}}/api/instances/{{instanceId}}/keys/{{keyId}}/regenerate
+Authorization: Bearer {{jwtToken}}
+
+### 7. Delete API Key
+DELETE {{baseUrl}}/api/instances/{{instanceId}}/keys/{{keyId}}
+Authorization: Bearer {{jwtToken}}
+
+### 8. Test API Key Authentication (using generated key)
+@apiKey = wa_ae4bbc470031f113de69eb61934fbf96130b9db232c0e7e70119917b633039f1
+
+GET {{baseUrl}}/api/instance/info
+Authorization: Bearer {{apiKey}}
+
+### 9. Test API Key Rate Limiting
+POST {{baseUrl}}/api/messages/text
+Authorization: Bearer {{apiKey}}
+Content-Type: application/json
+
+{
+  "to": "6281234567890",
+  "message": "Test message from API key"
+}
+
+### 10. Test Invalid API Key
+GET {{baseUrl}}/api/instance/info
+Authorization: Bearer invalid-api-key
+
+### 11. Test API Key Permissions (should fail if permission not granted)
+POST {{baseUrl}}/api/contacts/check
+Authorization: Bearer {{apiKey}}
+Content-Type: application/json
+
+{
+  "phoneNumbers": ["6281234567890", "6289876543210"]
+}

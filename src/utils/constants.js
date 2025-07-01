@@ -58,6 +58,7 @@ const ERROR_CODES = {
   // Webhook Errors
   WEBHOOK_DELIVERY_FAILED: "WEBHOOK_DELIVERY_FAILED",
   WEBHOOK_INVALID_URL: "WEBHOOK_INVALID_URL",
+  WEBHOOK_NOT_FOUND: "WEBHOOK_NOT_FOUND",
 
   // User Errors
   USER_NOT_FOUND: "USER_NOT_FOUND",
@@ -203,6 +204,12 @@ const DEFAULTS = {
     BASIC: 1000,
     PRO: 5000,
     MAX: 10000,
+  },
+
+  API_KEY_LIMITS: {
+    BASIC: 1, // Basic subscription: 1 API key per instance
+    PRO: 5, // Pro subscription: 5 API keys per instance
+    MAX: 10, // Max subscription: 10 API keys per instance
   },
 
   TIMEOUTS: {

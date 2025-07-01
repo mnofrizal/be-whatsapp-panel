@@ -1,0 +1,231 @@
+### WhatsApp API Backend - Webhook Tests
+### Phase 3: Webhook Management & Integration
+
+@baseUrl = http://localhost:3000
+@jwtToken = your-jwt-token-here
+@apiKey = your-api-key-here
+@instanceId = your-instance-id-here
+
+### Management APIs (JWT Authentication) ###
+
+### 1. Configure Webhook (Management API)
+POST {{baseUrl}}/api/instances/{{instanceId}}/webhook
+Authorization: Bearer {{jwtToken}}
+Content-Type: application/json
+
+{
+  "url": "https://your-webhook-endpoint.com/webhook",
+  "events": {
+    "message.received": true,
+    "message.sent": true,
+    "instance.status": true,
+    "connection.update": false,
+    "test": true
+  },
+  "headers": {
+    "X-Custom-Header": "custom-value",
+    "X-API-Version": "v1"
+  },
+  "isActive": true
+}
+
+### 2. Get Webhook Configuration (Management API)
+GET {{baseUrl}}/api/instances/{{instanceId}}/webhook
+Authorization: Bearer {{jwtToken}}
+
+### 3. Update Webhook Configuration (Management API)
+PUT {{baseUrl}}/api/instances/{{instanceId}}/webhook
+Authorization: Bearer {{jwtToken}}
+Content-Type: application/json
+
+{
+  "url": "https://updated-webhook-endpoint.com/webhook",
+  "events": {
+    "message.received": true,
+    "message.sent": false,
+    "instance.status": true,
+    "connection.update": true,
+    "test": true
+  },
+  "headers": {
+    "X-Custom-Header": "updated-value",
+    "X-API-Version": "v2"
+  },
+  "isActive": true
+}
+
+### 4. Test Webhook (Management API)
+POST {{baseUrl}}/api/instances/{{instanceId}}/webhook/test
+Authorization: Bearer {{jwtToken}}
+
+### 5. Get Webhook Statistics (Management API)
+GET {{baseUrl}}/api/instances/{{instanceId}}/webhook/stats
+Authorization: Bearer {{jwtToken}}
+
+### 6. Delete Webhook Configuration (Management API)
+DELETE {{baseUrl}}/api/instances/{{instanceId}}/webhook
+Authorization: Bearer {{jwtToken}}
+
+### Integration APIs (API Key Authentication) ###
+
+### 7. Configure Webhook (Integration API)
+POST {{baseUrl}}/api/webhook
+Authorization: Bearer {{apiKey}}
+Content-Type: application/json
+
+{
+  "url": "https://your-app-webhook.com/whatsapp-events",
+  "events": {
+    "message.received": true,
+    "message.sent": true,
+    "instance.status": false,
+    "connection.update": false,
+    "test": true
+  },
+  "headers": {
+    "X-App-Token": "your-app-token",
+    "X-Source": "whatsapp-api"
+  },
+  "isActive": true
+}
+
+### 8. Get Webhook Configuration (Integration API)
+GET {{baseUrl}}/api/webhook
+Authorization: Bearer {{apiKey}}
+
+### 9. Update Webhook Configuration (Integration API)
+PUT {{baseUrl}}/api/webhook
+Authorization: Bearer {{apiKey}}
+Content-Type: application/json
+
+{
+  "url": "https://updated-app-webhook.com/whatsapp-events",
+  "events": {
+    "message.received": true,
+    "message.sent": true,
+    "instance.status": true,
+    "connection.update": false,
+    "test": true
+  },
+  "headers": {
+    "X-App-Token": "updated-app-token",
+    "X-Source": "whatsapp-api-v2"
+  },
+  "isActive": true
+}
+
+### 10. Test Webhook (Integration API)
+POST {{baseUrl}}/api/webhook/test
+Authorization: Bearer {{apiKey}}
+
+### 11. Get Webhook Statistics (Integration API)
+GET {{baseUrl}}/api/webhook/stats
+Authorization: Bearer {{apiKey}}
+
+### 12. Delete Webhook Configuration (Integration API)
+DELETE {{baseUrl}}/api/webhook
+Authorization: Bearer {{apiKey}}
+
+### Error Testing ###
+
+### 13. Test Invalid Webhook URL
+POST {{baseUrl}}/api/webhook
+Authorization: Bearer {{apiKey}}
+Content-Type: application/json
+
+{
+  "url": "not-a-valid-url",
+  "events": {
+    "message.received": true
+  }
+}
+
+### 14. Test Missing Required Fields
+POST {{baseUrl}}/api/webhook
+Authorization: Bearer {{apiKey}}
+Content-Type: application/json
+
+{
+  "events": {
+    "message.received": true
+  }
+}
+
+### 15. Test Unauthorized Access (no token)
+GET {{baseUrl}}/api/webhook
+
+### 16. Test Invalid API Key
+GET {{baseUrl}}/api/webhook
+Authorization: Bearer invalid-api-key
+
+### 17. Test Webhook with No Events Enabled
+POST {{baseUrl}}/api/webhook
+Authorization: Bearer {{apiKey}}
+Content-Type: application/json
+
+{
+  "url": "https://your-webhook.com/endpoint",
+  "events": {},
+  "isActive": true
+}
+
+### Sample Webhook Payload Examples ###
+
+### Expected webhook payload for message.received:
+# {
+#   "event": "message.received",
+#   "instance": {
+#     "id": "instance-id",
+#     "name": "instance-name"
+#   },
+#   "data": {
+#     "from": "6281234567890@s.whatsapp.net",
+#     "to": "6289876543210@s.whatsapp.net",
+#     "messageType": "conversation",
+#     "timestamp": "2024-01-01T10:00:00.000Z",
+#     "messageId": "message-id-123"
+#   },
+#   "timestamp": "2024-01-01T10:00:00.000Z"
+# }
+
+### Expected webhook payload for message.sent:
+# {
+#   "event": "message.sent",
+#   "instance": {
+#     "id": "instance-id",
+#     "name": "instance-name"
+#   },
+#   "data": {
+#     "to": "6281234567890@s.whatsapp.net",
+#     "messageType": "text",
+#     "timestamp": "2024-01-01T10:00:00.000Z",
+#     "messageId": "message-id-456",
+#     "status": "sent"
+#   },
+#   "timestamp": "2024-01-01T10:00:00.000Z"
+# }
+
+### Expected webhook payload for instance.status:
+# {
+#   "event": "instance.status",
+#   "instance": {
+#     "id": "instance-id",
+#     "name": "instance-name"
+#   },
+#   "data": {
+#     "status": "CONNECTED",
+#     "previousStatus": "CONNECTING",
+#     "timestamp": "2024-01-01T10:00:00.000Z",
+#     "phone": "6281234567890",
+#     "displayName": "John Doe"
+#   },
+#   "timestamp": "2024-01-01T10:00:00.000Z"
+# }
+
+### Webhook Headers:
+# Content-Type: application/json
+# User-Agent: WhatsApp-API-Webhook/1.0
+# X-Webhook-Signature: sha256-hash-of-payload
+# X-Webhook-Event: message.received
+# X-Webhook-Instance: instance-id
+# + any custom headers configured

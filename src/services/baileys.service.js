@@ -11,6 +11,7 @@ import databaseConfig from "../config/database.js";
 import logger from "../utils/logger.js";
 import config from "../config/environment.js";
 import socketService from "./socket.service.js";
+import webhookService from "./webhook.service.js";
 import { INSTANCE_STATUS } from "../utils/constants.js";
 
 class BaileysService {
@@ -104,6 +105,9 @@ class BaileysService {
           `Instance ${instanceId} not initialized. Call createInstance first.`
         );
       }
+
+      // Ensure auth directory exists (recreate if needed after logout)
+      await fs.mkdir(instanceConfig.authDir, { recursive: true });
 
       // Initialize auth state
       const { state, saveCreds } = await useMultiFileAuthState(
@@ -440,6 +444,17 @@ class BaileysService {
         messageId: result.key.id,
       });
 
+      // Update message statistics
+      await this.updateMessageStats(instanceId, "sent", 1);
+
+      // Trigger webhook for message sent
+      await webhookService.handleMessageSent(instanceId, {
+        to: jid,
+        messageType: "text",
+        timestamp: new Date().toISOString(),
+        messageId: result.key.id,
+      });
+
       return result;
     } catch (error) {
       logger.error("Failed to send text message", {
@@ -447,6 +462,10 @@ class BaileysService {
         to,
         error: error.message,
       });
+
+      // Update failed message statistics
+      await this.updateMessageStats(instanceId, "failed", 1);
+
       throw error;
     }
   }
@@ -492,6 +511,17 @@ class BaileysService {
         messageId: result.key.id,
       });
 
+      // Update message statistics
+      await this.updateMessageStats(instanceId, "sent", 1);
+
+      // Trigger webhook for message sent
+      await webhookService.handleMessageSent(instanceId, {
+        to: jid,
+        messageType: mediaType,
+        timestamp: new Date().toISOString(),
+        messageId: result.key.id,
+      });
+
       return result;
     } catch (error) {
       logger.error("Failed to send media message", {
@@ -500,6 +530,10 @@ class BaileysService {
         mediaType,
         error: error.message,
       });
+
+      // Update failed message statistics
+      await this.updateMessageStats(instanceId, "failed", 1);
+
       throw error;
     }
   }
@@ -533,6 +567,70 @@ class BaileysService {
         phone,
         error: error.message,
       });
+      throw error;
+    }
+  }
+
+  /**
+   * Send location message
+   * @param {string} instanceId - Instance identifier
+   * @param {string} to - Recipient phone number
+   * @param {Object} location - Location data
+   */
+  async sendLocationMessage(instanceId, to, location) {
+    try {
+      const socket = this.instances.get(instanceId);
+      if (!socket) {
+        throw new Error(`Instance ${instanceId} not found`);
+      }
+
+      if (!socket.user) {
+        throw new Error(`Instance ${instanceId} is not connected`);
+      }
+
+      // Format phone number to JID
+      const jid = this.formatPhoneToJID(to);
+
+      // Send location message
+      const result = await socket.sendMessage(jid, {
+        location: {
+          degreesLatitude: location.latitude,
+          degreesLongitude: location.longitude,
+          name: location.name || "",
+          address: location.address || "",
+        },
+      });
+
+      logger.info("Location message sent", {
+        instanceId,
+        to: jid,
+        messageId: result.key.id,
+        latitude: location.latitude,
+        longitude: location.longitude,
+      });
+
+      // Update message statistics
+      await this.updateMessageStats(instanceId, "sent", 1);
+
+      // Trigger webhook for message sent
+      await webhookService.handleMessageSent(instanceId, {
+        to: jid,
+        messageType: "location",
+        timestamp: new Date().toISOString(),
+        messageId: result.key.id,
+      });
+
+      return result;
+    } catch (error) {
+      logger.error("Failed to send location message", {
+        instanceId,
+        to,
+        error: error.message,
+      });
+
+      // Update failed message statistics
+      await this.updateMessageStats(instanceId, "failed", 1);
+
       throw error;
     }
   }
@@ -777,8 +875,71 @@ class BaileysService {
       if (shouldReconnect) {
         await this.attemptReconnect(instanceId);
       } else {
-        logger.info("Instance logged out, not reconnecting", { instanceId });
-        await this.deleteInstance(instanceId);
+        // Check if this is a logout from phone/WhatsApp app
+        const isLoggedOut =
+          lastDisconnect?.error instanceof Boom &&
+          lastDisconnect.error.output.statusCode === DisconnectReason.loggedOut;
+
+        if (isLoggedOut) {
+          logger.info(
+            "Instance logged out from WhatsApp (phone disconnect), session cleared but instance preserved",
+            { instanceId }
+          );
+
+          // Clear session data but don't delete the instance
+          // This allows the user to reconnect with a new QR code
+          try {
+            // Clear session files
+            const instanceConfig = this.instanceConfigs?.get(instanceId);
+            if (instanceConfig?.authDir) {
+              const authDir = instanceConfig.authDir;
+              await fs.rm(authDir, { recursive: true, force: true });
+              logger.info("Session files cleared after logout", {
+                instanceId,
+                authDir,
+              });
+            }
+
+            // Clean up in-memory state
+            this.qrCodes.delete(instanceId);
+            this.qrAttempts.delete(instanceId);
+            this.reconnectAttempts.delete(instanceId);
+
+            // Update database to clear session-related data
+            const prisma = databaseConfig.getClient();
+            await prisma.instance.update({
+              where: { id: instanceId },
+              data: {
+                status: INSTANCE_STATUS.DISCONNECTED,
+                phone: null,
+                displayName: null,
+                qrCode: null,
+                qrCodeExpiry: null,
+                lastError: "Logged out from WhatsApp. Ready for reconnection.",
+                lastErrorAt: new Date(),
+                lastDisconnectedAt: new Date(),
+              },
+            });
+
+            logger.info("Instance ready for reconnection after logout", {
+              instanceId,
+            });
+          } catch (cleanupError) {
+            logger.error("Failed to cleanup after logout", {
+              instanceId,
+              error: cleanupError.message,
+            });
+          }
+        } else {
+          // For other non-reconnectable disconnects, just log and update status
+          logger.info(
+            "Instance disconnected (non-reconnectable), session preserved",
+            {
+              instanceId,
+              reason: lastDisconnect?.error?.message || "Unknown",
+            }
+          );
+        }
       }
     } catch (error) {
       logger.error("Error handling connection close", {
@@ -820,6 +981,15 @@ class BaileysService {
         null,
         connectionData
       );
+
+      // Trigger webhook for instance status change
+      await webhookService.handleInstanceStatusChange(instanceId, {
+        status: INSTANCE_STATUS.CONNECTED,
+        previousStatus: "CONNECTING",
+        timestamp: new Date().toISOString(),
+        phone: connectionData.phone,
+        displayName: connectionData.displayName,
+      });
 
       logger.info("Instance connected successfully", {
         instanceId,
@@ -910,10 +1080,27 @@ class BaileysService {
 
       if (type === "notify") {
         // Count received messages for statistics
-        const receivedCount = messages.filter((msg) => !msg.key.fromMe).length;
+        const receivedMessages = messages.filter((msg) => !msg.key.fromMe);
 
-        if (receivedCount > 0) {
-          await this.updateMessageStats(instanceId, "received", receivedCount);
+        if (receivedMessages.length > 0) {
+          await this.updateMessageStats(
+            instanceId,
+            "received",
+            receivedMessages.length
+          );
+
+          // Trigger webhook for each received message (without content for privacy)
+          for (const message of receivedMessages) {
+            await webhookService.handleMessageReceived(instanceId, {
+              from: message.key.remoteJid,
+              to: message.key.participant || message.key.remoteJid,
+              messageType: Object.keys(message.message || {})[0] || "unknown",
+              timestamp: new Date(
+                message.messageTimestamp * 1000
+              ).toISOString(),
+              messageId: message.key.id,
+            });
+          }
         }
       }
     } catch (error) {
@@ -1039,7 +1226,20 @@ class BaileysService {
       const prisma = databaseConfig.getClient();
       const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
 
-      const field = type === "sent" ? "messagesSent" : "messagesReceived";
+      let field;
+      switch (type) {
+        case "sent":
+          field = "messagesSent";
+          break;
+        case "received":
+          field = "messagesReceived";
+          break;
+        case "failed":
+          field = "messagesFailed";
+          break;
+        default:
+          throw new Error(`Invalid message stats type: ${type}`);
+      }
 
       await prisma.messageStat.upsert({
         where: {

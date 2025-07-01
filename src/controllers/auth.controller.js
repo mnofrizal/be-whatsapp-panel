@@ -51,13 +51,13 @@ class AuthController {
           },
         });
 
-        // Create user as administrator of their subscription
+        // Create user with USER role (not administrator)
         const user = await tx.user.create({
           data: {
             email: email.toLowerCase(),
             password: hashedPassword,
             name: Helpers.sanitizeInput(name),
-            role: USER_ROLES.ADMINISTRATOR, // First user is admin
+            role: USER_ROLES.USER, // Default role for new registrations
             subscriptionId: subscription.id,
           },
           include: {

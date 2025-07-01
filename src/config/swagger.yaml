@@ -1,0 +1,1450 @@
+openapi: 3.0.0
+info:
+  title: WhatsApp API Backend
+  version: 1.0.0
+  description: API management platform for integrating WhatsApp messaging into applications.
+servers:
+  - url: http://localhost:3000/api
+    description: Development server
+tags:
+  - name: Auth
+    description: User authentication and management
+  - name: Users
+    description: User management (Admin only)
+  - name: Instances
+    description: WhatsApp instance management
+  - name: Messages
+    description: Sending WhatsApp messages
+  - name: Webhooks
+    description: Webhook configuration
+  - name: API Keys
+    description: API Key management
+paths:
+  /auth/register:
+    post:
+      summary: Register a new user
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                password:
+                  type: string
+                  example: password123
+                name:
+                  type: string
+                  example: John Doe
+              required:
+                - email
+                - password
+                - name
+      responses:
+        201:
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      email:
+                        type: string
+                      name:
+                        type: string
+                  meta:
+                    type: object
+        400:
+          description: Invalid input
+  /auth/login:
+    post:
+      summary: User login
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: admin@admin.com
+                password:
+                  type: string
+                  example: 123456
+              required:
+                - email
+                - password
+      responses:
+        200:
+          description: User logged in successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                      user:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          email:
+                            type: string
+                          name:
+                            type: string
+                  meta:
+                    type: object
+        401:
+          description: Invalid credentials
+  /auth/me:
+    get:
+      summary: Get current user information
+      tags:
+        - Auth
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Current user data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      email:
+                        type: string
+                      name:
+                        type: string
+                      role:
+                        type: string
+                      subscription:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          tier:
+                            type: string
+                    required:
+                      - id
+                      - email
+                      - name
+                      - role
+                      - subscription
+                  meta:
+                    type: object
+        401:
+          description: Unauthorized
+  /auth/change-password:
+    post:
+      summary: Change user password
+      tags:
+        - Auth
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                currentPassword:
+                  type: string
+                  example: securePassword123
+                newPassword:
+                  type: string
+                  example: newSecurePassword456
+              required:
+                - currentPassword
+                - newPassword
+      responses:
+        200:
+          description: Password changed successfully
+        401:
+          description: Unauthorized or invalid current password
+  /auth/refresh:
+    post:
+      summary: Refresh JWT token
+      tags:
+        - Auth
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                  meta:
+                    type: object
+        401:
+          description: Unauthorized
+  /auth/logout:
+    post:
+      summary: Logout user
+      tags:
+        - Auth
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: User logged out successfully
+        401:
+          description: Unauthorized
+  /users:
+    post:
+      summary: Create a new user (Admin Only)
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: newuser@example.com
+                password:
+                  type: string
+                  example: securepassword123
+                name:
+                  type: string
+                  example: New User
+                role:
+                  type: string
+                  enum: [USER, ADMINISTRATOR]
+                  default: USER
+              required:
+                - email
+                - password
+                - name
+      responses:
+        201:
+          description: User created successfully
+        400:
+          description: Invalid input
+        403:
+          description: Forbidden (Admin role required)
+        409:
+          description: User with email already exists
+    get:
+      summary: Get all users (Admin Only)
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: Page number for pagination
+        - in: query
+          name: per_page
+          schema:
+            type: integer
+            default: 10
+          description: Number of users per page
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
+          description: Sort order
+        - in: query
+          name: sort_by
+          schema:
+            type: string
+            default: createdAt
+          description: Field to sort by
+      responses:
+        200:
+          description: List of users
+        403:
+          description: Forbidden (Admin role required)
+  /users/{id}:
+    get:
+      summary: Get user by ID (Admin Only)
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: ID of the user to retrieve
+      responses:
+        200:
+          description: User data
+        403:
+          description: Forbidden (Admin role required)
+        404:
+          description: User not found
+    put:
+      summary: Update user by ID (Admin Only)
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: ID of the user to update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: updated@example.com
+                name:
+                  type: string
+                  example: Updated Name
+                role:
+                  type: string
+                  enum: [USER, ADMINISTRATOR]
+                isActive:
+                  type: boolean
+      responses:
+        200:
+          description: User updated successfully
+        400:
+          description: Invalid input
+        403:
+          description: Forbidden (Admin role required or self-modification attempt)
+        404:
+          description: User not found
+        409:
+          description: Email already in use
+    delete:
+      summary: Delete user by ID (Admin Only)
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: ID of the user to delete
+      responses:
+        200:
+          description: User deleted successfully
+        403:
+          description: Forbidden (Admin role required or self-deletion attempt)
+        404:
+          description: User not found
+  /users/subscription/usage:
+    get:
+      summary: Get subscription usage details (Admin Only)
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Subscription usage data
+        403:
+          description: Forbidden (Admin role required)
+  /instances:
+    post:
+      summary: Create a new WhatsApp instance
+      tags:
+        - Instances
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Unique name for the instance
+                  example: my-whatsapp-instance
+                displayName:
+                  type: string
+                  description: Display name for the instance
+                  example: My WhatsApp Business
+                description:
+                  type: string
+                  description: Description of the instance
+                  example: This is a test instance for development.
+              required:
+                - name
+      responses:
+        201:
+          description: Instance created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      name:
+                        type: string
+                      status:
+                        type: string
+                  meta:
+                    type: object
+        400:
+          description: Invalid input
+        403:
+          description: Subscription limit reached
+    get:
+      summary: List all WhatsApp instances for the current user
+      tags:
+        - Instances
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: List of instances
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        status:
+                          type: string
+                  meta:
+                    type: object
+  /instances/{id}:
+    get:
+      summary: Get instance details by ID
+      tags:
+        - Instances
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: ID of the instance to retrieve
+      responses:
+        200:
+          description: Instance data
+        404:
+          description: Instance not found
+    put:
+      summary: Update instance by ID
+      tags:
+        - Instances
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: ID of the instance to update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: New unique name for the instance
+                displayName:
+                  type: string
+                  description: New display name for the instance
+                description:
+                  type: string
+                  description: New description of the instance
+                settings:
+                  type: object
+                  description: Optional settings for the instance
+              required: []
+      responses:
+        200:
+          description: Instance updated successfully
+        400:
+          description: Invalid input
+        404:
+          description: Instance not found
+    delete:
+      summary: Delete instance by ID
+      tags:
+        - Instances
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: ID of the instance to delete
+      responses:
+        200:
+          description: Instance deleted successfully
+        404:
+          description: Instance not found
+  /instances/{id}/status:
+    get:
+      summary: Get instance connection status by ID
+      tags:
+        - Instances
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: ID of the instance
+      responses:
+        200:
+          description: Instance status
+        404:
+          description: Instance not found
+  /instances/{id}/connect:
+    post:
+      summary: Connect instance by ID
+      tags:
+        - Instances
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: ID of the instance to connect
+      responses:
+        200:
+          description: Instance connection initiated
+        404:
+          description: Instance not found
+  /instances/{id}/disconnect:
+    post:
+      summary: Disconnect instance by ID
+      tags:
+        - Instances
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: ID of the instance to disconnect
+      responses:
+        200:
+          description: Instance disconnection initiated
+        404:
+          description: Instance not found
+  /instances/{id}/logout:
+    post:
+      summary: Logout instance by ID (clears session)
+      tags:
+        - Instances
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: ID of the instance to logout
+      responses:
+        200:
+          description: Instance logged out
+        404:
+          description: Instance not found
+  /instances/{id}/restart:
+    post:
+      summary: Restart instance by ID
+      tags:
+        - Instances
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: ID of the instance to restart
+      responses:
+        200:
+          description: Instance restart initiated
+        404:
+          description: Instance not found
+  /instances/{id}/qr:
+    get:
+      summary: Get QR code for instance by ID
+      tags:
+        - Instances
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: ID of the instance
+      responses:
+        200:
+          description: QR code data
+        404:
+          description: Instance not found
+  /instances/{id}/qr/refresh:
+    post:
+      summary: Refresh QR code for instance by ID
+      tags:
+        - Instances
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: ID of the instance
+      responses:
+        200:
+          description: QR code refresh initiated
+        404:
+          description: Instance not found
+  /instances/{id}/keys:
+    post:
+      summary: Create API Key for an instance
+      tags:
+        - API Keys
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: ID of the instance to create API key for
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Development Key
+                permissions:
+                  type: object
+                  example:
+                    {
+                      "messages": { "send": true },
+                      "contacts": { "check": true },
+                    }
+                rateLimit:
+                  type: integer
+                  example: 1000
+              required:
+                - name
+      responses:
+        201:
+          description: API Key created successfully
+        400:
+          description: Invalid input
+        404:
+          description: Instance not found
+    get:
+      summary: List API Keys for an instance
+      tags:
+        - API Keys
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: ID of the instance to list API keys for
+      responses:
+        200:
+          description: List of API keys
+        404:
+          description: Instance not found
+  /instances/{instanceId}/keys/{keyId}:
+    get:
+      summary: Get a specific API Key for an instance
+      tags:
+        - API Keys
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: instanceId
+          schema:
+            type: string
+          required: true
+          description: ID of the instance
+        - in: path
+          name: keyId
+          schema:
+            type: string
+          required: true
+          description: ID of the API key to retrieve
+      responses:
+        200:
+          description: API Key details
+        404:
+          description: Instance or API Key not found
+    put:
+      summary: Update API Key for an instance
+      tags:
+        - API Keys
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: instanceId
+          schema:
+            type: string
+          required: true
+          description: ID of the instance
+        - in: path
+          name: keyId
+          schema:
+            type: string
+          required: true
+          description: ID of the API key to update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Updated Key Name
+                permissions:
+                  type: object
+                  example: { "messages": { "send": false, "receive": true } }
+                rateLimit:
+                  type: integer
+                  example: 500
+                isActive:
+                  type: boolean
+                  example: true
+      responses:
+        200:
+          description: API Key updated successfully
+        400:
+          description: Invalid input
+        404:
+          description: Instance or API Key not found
+    delete:
+      summary: Delete API Key for an instance
+      tags:
+        - API Keys
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: instanceId
+          schema:
+            type: string
+          required: true
+          description: ID of the instance
+        - in: path
+          name: keyId
+          schema:
+            type: string
+          required: true
+          description: ID of the API key to delete
+      responses:
+        200:
+          description: API Key deleted successfully
+        404:
+          description: Instance or API Key not found
+  /instances/{instanceId}/keys/{keyId}/usage:
+    get:
+      summary: Get usage statistics for a specific API Key
+      tags:
+        - API Keys
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: instanceId
+          schema:
+            type: string
+          required: true
+          description: ID of the instance
+        - in: path
+          name: keyId
+          schema:
+            type: string
+          required: true
+          description: ID of the API key
+      responses:
+        200:
+          description: API Key usage statistics
+        404:
+          description: Instance or API Key not found
+  /instances/{instanceId}/keys/{keyId}/regenerate:
+    post:
+      summary: Regenerate an API Key
+      tags:
+        - API Keys
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: instanceId
+          schema:
+            type: string
+          required: true
+          description: ID of the instance
+        - in: path
+          name: keyId
+          schema:
+            type: string
+          required: true
+          description: ID of the API key to regenerate
+      responses:
+        200:
+          description: New API Key generated successfully
+        404:
+          description: Instance or API Key not found
+  /instances/{id}/webhook:
+    post:
+      summary: Configure webhook for an instance
+      tags:
+        - Webhooks
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: ID of the instance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                  format: url
+                  example: https://your-app.com/webhook/whatsapp
+                events:
+                  type: array
+                  items:
+                    type: string
+                  example: ["message.received", "connection.update"]
+                secret:
+                  type: string
+                  example: your-webhook-secret
+                isActive:
+                  type: boolean
+                  example: true
+              required:
+                - url
+                - events
+      responses:
+        200:
+          description: Webhook configured successfully
+        400:
+          description: Invalid input
+        404:
+          description: Instance not found
+    get:
+      summary: Get webhook configuration for an instance
+      tags:
+        - Webhooks
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: ID of the instance
+      responses:
+        200:
+          description: Webhook configuration
+        404:
+          description: Instance not found
+    put:
+      summary: Update webhook configuration for an instance
+      tags:
+        - Webhooks
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: ID of the instance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                  format: url
+                  example: https://your-app.com/webhook/whatsapp-updated
+                events:
+                  type: array
+                  items:
+                    type: string
+                  example: ["message.received", "connection.update"]
+                secret:
+                  type: string
+                  example: updated-webhook-secret
+                isActive:
+                  type: boolean
+                  example: true
+      responses:
+        200:
+          description: Webhook updated successfully
+        400:
+          description: Invalid input
+        404:
+          description: Instance not found
+    delete:
+      summary: Delete webhook configuration for an instance
+      tags:
+        - Webhooks
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: ID of the instance
+      responses:
+        200:
+          description: Webhook deleted successfully
+        404:
+          description: Instance not found
+  /instances/{id}/stats:
+    get:
+      summary: Get instance statistics by ID
+      tags:
+        - Instances
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: ID of the instance
+        - in: query
+          name: startDate
+          schema:
+            type: string
+            format: date
+            example: 2024-01-01
+          description: Start date for statistics (YYYY-MM-DD)
+        - in: query
+          name: endDate
+          schema:
+            type: string
+            format: date
+            example: 2024-01-31
+          description: End date for statistics (YYYY-MM-DD)
+      responses:
+        200:
+          description: Instance statistics
+        404:
+          description: Instance not found
+  /instances/usage:
+    get:
+      summary: Get subscription usage details
+      tags:
+        - Instances
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Subscription usage data
+        403:
+          description: Forbidden (Admin role required if not current user's subscription)
+  /messages/text:
+    post:
+      summary: Send a text message
+      tags:
+        - Messages
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                to:
+                  type: string
+                  description: Recipient phone number (e.g., 6281234567890)
+                  example: 6281234567890
+                message:
+                  type: string
+                  description: Text message content
+                  example: Hello from Kilo Code!
+              required:
+                - to
+                - message
+      responses:
+        200:
+          description: Message sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      messageId:
+                        type: string
+                      status:
+                        type: string
+                  meta:
+                    type: object
+        400:
+          description: Invalid input or instance not connected
+  /messages/image:
+    post:
+      summary: Send an image message
+      tags:
+        - Messages
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                to:
+                  type: string
+                  description: Recipient phone number (e.g., 6281234567890)
+                  example: 6281234567890
+                image:
+                  type: string
+                  format: binary
+                  description: Image file to send
+                caption:
+                  type: string
+                  description: Caption for the image
+              required:
+                - to
+                - image
+      responses:
+        200:
+          description: Image message sent successfully
+        400:
+          description: Invalid input or instance not connected
+  /messages/document:
+    post:
+      summary: Send a document message
+      tags:
+        - Messages
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                to:
+                  type: string
+                  description: Recipient phone number (e.g., 6281234567890)
+                  example: 6281234567890
+                document:
+                  type: string
+                  format: binary
+                  description: Document file to send
+                caption:
+                  type: string
+                  description: Caption for the document
+              required:
+                - to
+                - document
+      responses:
+        200:
+          description: Document message sent successfully
+        400:
+          description: Invalid input or instance not connected
+  /messages/audio:
+    post:
+      summary: Send an audio message
+      tags:
+        - Messages
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                to:
+                  type: string
+                  description: Recipient phone number (e.g., 6281234567890)
+                  example: 6281234567890
+                audio:
+                  type: string
+                  format: binary
+                  description: Audio file to send
+              required:
+                - to
+                - audio
+      responses:
+        200:
+          description: Audio message sent successfully
+        400:
+          description: Invalid input or instance not connected
+  /messages/location:
+    post:
+      summary: Send a location message
+      tags:
+        - Messages
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                to:
+                  type: string
+                  description: Recipient phone number (e.g., 6281234567890)
+                  example: 6281234567890
+                latitude:
+                  type: number
+                  format: float
+                  example: -6.2088
+                longitude:
+                  type: number
+                  format: float
+                  example: 106.8456
+                name:
+                  type: string
+                  example: Jakarta, Indonesia
+                address:
+                  type: string
+                  example: Jakarta, Special Capital Region of Jakarta, Indonesia
+              required:
+                - to
+                - latitude
+                - longitude
+      responses:
+        200:
+          description: Location message sent successfully
+        400:
+          description: Invalid input or instance not connected
+  /contacts/check:
+    post:
+      summary: Check if phone numbers are WhatsApp users
+      tags:
+        - Messages
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phoneNumbers:
+                  type: array
+                  items:
+                    type: string
+                  description: Array of phone numbers to check (e.g., ["6281234567890", "6289876543210"])
+                  example: ["6281234567890", "6289876543210"]
+              required:
+                - phoneNumbers
+      responses:
+        200:
+          description: List of checked phone numbers with WhatsApp status
+        400:
+          description: Invalid input
+  /instance/info:
+    get:
+      summary: Get current instance information (API Key context)
+      tags:
+        - Instances
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Instance information
+        401:
+          description: Unauthorized (invalid API key)
+  /stats:
+    get:
+      summary: Get message statistics for the current instance (API Key context)
+      tags:
+        - Instances
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: startDate
+          schema:
+            type: string
+            format: date
+            example: 2024-01-01
+          description: Start date for statistics (YYYY-MM-DD)
+        - in: query
+          name: endDate
+          schema:
+            type: string
+            format: date
+            example: 2024-01-31
+          description: End date for statistics (YYYY-MM-DD)
+      responses:
+        200:
+          description: Message statistics
+        401:
+          description: Unauthorized (invalid API key)
+  /webhook:
+    post:
+      summary: Configure webhook (Integration API)
+      tags:
+        - Webhooks
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                  format: url
+                  example: https://your-app-webhook.com/whatsapp-events
+                events:
+                  type: object
+                  additionalProperties:
+                    type: boolean
+                  example: { "message.received": true, "instance.status": true }
+                headers:
+                  type: object
+                  additionalProperties:
+                    type: string
+                  example: { "X-App-Token": "your-app-token" }
+                isActive:
+                  type: boolean
+                  example: true
+              required:
+                - url
+                - events
+      responses:
+        200:
+          description: Webhook configured successfully
+        400:
+          description: Invalid input
+    get:
+      summary: Get webhook configuration (Integration API)
+      tags:
+        - Webhooks
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Webhook configuration
+        404:
+          description: Webhook not found
+    put:
+      summary: Update webhook configuration (Integration API)
+      tags:
+        - Webhooks
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                  format: url
+                  example: https://updated-app-webhook.com/whatsapp-events
+                events:
+                  type: object
+                  additionalProperties:
+                    type: boolean
+                  example: { "message.received": true, "message.sent": true }
+                headers:
+                  type: object
+                  additionalProperties:
+                    type: string
+                  example: { "X-App-Token": "updated-app-token" }
+                isActive:
+                  type: boolean
+                  example: true
+              required: []
+      responses:
+        200:
+          description: Webhook updated successfully
+        400:
+          description: Invalid input
+        404:
+          description: Webhook not found
+    delete:
+      summary: Delete webhook configuration (Integration API)
+      tags:
+        - Webhooks
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Webhook deleted successfully
+        404:
+          description: Webhook not found
+  /webhook/test:
+    post:
+      summary: Test webhook delivery (Integration API)
+      tags:
+        - Webhooks
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Webhook test initiated
+        404:
+          description: Webhook not configured
+  /webhook/stats:
+    get:
+      summary: Get webhook statistics (Integration API)
+      tags:
+        - Webhooks
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Webhook statistics
+        404:
+          description: Webhook not configured
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

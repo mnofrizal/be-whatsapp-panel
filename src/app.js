@@ -4,6 +4,10 @@ import helmet from "helmet";
 import morgan from "morgan";
 import path from "path";
 import http from "http";
+import { fileURLToPath } from "url"; // Import fileURLToPath
+import { dirname } from "path"; // Import dirname
+import swaggerUi from "swagger-ui-express";
+import YAML from "yamljs";
 
 // Import configurations
 import config from "./config/environment.js";
@@ -21,11 +25,20 @@ import RateLimitMiddleware from "./middleware/rateLimit.middleware.js";
 import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import instanceRoutes from "./routes/instance.routes.js";
+import apiKeyRoutes from "./routes/apikey.routes.js";
+import messageRoutes from "./routes/message.routes.js";
+import {
+  webhookManagementRoutes,
+  webhookIntegrationRoutes,
+} from "./routes/webhook.routes.js";
 
 class WhatsAppAPIServer {
   constructor() {
     this.app = express();
     this.server = http.createServer(this.app);
+    // Define __dirname for ES modules
+    const __filename = fileURLToPath(import.meta.url);
+    this.dirname = dirname(__filename);
   }
 
   /**
@@ -104,6 +117,10 @@ class WhatsAppAPIServer {
 
     // Basic rate limiting for all routes
     this.app.use(RateLimitMiddleware.createBasicLimiter());
+
+    // Define __dirname for ES modules
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
 
     // Request ID and timing middleware
     this.app.use((req, res, next) => {
@@ -187,10 +204,30 @@ class WhatsAppAPIServer {
       );
     });
 
+    // Swagger UI documentation
+    const swaggerDocument = YAML.load(
+      path.resolve(this.dirname, "./config/swagger.yaml")
+    );
+    this.app.use(
+      "/api/docs",
+      swaggerUi.serve,
+      swaggerUi.setup(swaggerDocument)
+    );
+
     // Mount API routes
     this.app.use("/api/auth", authRoutes);
     this.app.use("/api/users", userRoutes);
     this.app.use("/api/instances", instanceRoutes);
+
+    // Phase 3 routes - API Key Management (JWT authenticated)
+    this.app.use("/api/instances", apiKeyRoutes);
+
+    // Phase 3 routes - Integration APIs (API Key authenticated)
+    this.app.use("/api", messageRoutes);
+
+    // Phase 3 routes - Webhook Management & Integration
+    this.app.use("/api/instances", webhookManagementRoutes);
+    this.app.use("/api", webhookIntegrationRoutes);
 
     // API root endpoint
     this.app.get("/api", (req, res) => {
@@ -201,11 +238,25 @@ class WhatsAppAPIServer {
             message: "WhatsApp API Backend",
             version: "1.0.0",
             endpoints: {
+              // Management APIs (JWT required)
               auth: "/api/auth",
               users: "/api/users",
               instances: "/api/instances",
+
+              // Integration APIs (API Key required)
+              messages: "/api/messages",
+              contacts: "/api/contacts",
+              stats: "/api/stats",
+              webhook: "/api/webhook",
+
+              // System endpoints
               health: "/health",
               version: "/api/version",
+            },
+            documentation: {
+              management: "Use JWT Bearer tokens for management APIs",
+              integration: "Use API Key Bearer tokens for integration APIs",
+              authentication: "Authorization: Bearer <token>",
             },
           },
           {
@@ -294,6 +345,7 @@ class WhatsAppAPIServer {
         logger.info(`🌍 Environment: ${config.nodeEnv}`);
         logger.info(`📊 Health check: http://localhost:${config.port}/health`);
         logger.info(`🔗 API endpoint: http://localhost:${config.port}/api`);
+        logger.info(`📚 API Docs: http://localhost:${config.port}/api/docs`);
       });
 
       return this.server;

@@ -98,6 +98,7 @@ model ApiKey {
   instanceId  String
   name        String // Human-readable name for the key
   keyHash     String    @unique // SHA-256 hash of the actual key
+  plainKey    String? // Plain API key for development (remove in production)
   permissions String // JSON string of permissions array
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())

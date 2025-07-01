@@ -163,6 +163,16 @@ class Helpers {
   }
 
   /**
+   * Create success response
+   * @param {object} data - Response data
+   * @param {object} meta - Response metadata
+   * @returns {object} - Success response
+   */
+  static createSuccessResponse(data = null, meta = {}) {
+    return this.createResponse(true, data, meta);
+  }
+
+  /**
    * Validate email format
    * @param {string} email - Email address
    * @returns {boolean} - Validation result
